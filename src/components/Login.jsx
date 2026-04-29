@@ -23,7 +23,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-dvh min-h-[100svh] w-full items-center justify-center overflow-x-hidden overflow-y-auto bg-[var(--bg)] py-6 ps-[max(1rem,env(safe-area-inset-left))] pe-[max(1rem,env(safe-area-inset-right))] pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="relative flex h-[100dvh] max-h-[100dvh] min-h-0 w-full items-center justify-center overflow-x-hidden overflow-y-auto bg-[var(--bg)] py-6 ps-[max(1rem,env(safe-area-inset-left))] pe-[max(1rem,env(safe-area-inset-right))] pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-32 top-[10%] h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.35)_0%,transparent_70%)] blur-2xl"

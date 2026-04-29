@@ -36,6 +36,39 @@ export const DAYS = [
 
 export const DURATION_OPTIONS = ["1hr", "1.5hr", "2hr", "2.5hr", "3hr"];
 
+export function dayLabelToDayIndex(dayLabel) {
+  const i = DAYS.indexOf(dayLabel);
+  return i >= 0 ? i : 0;
+}
+
+/** e.g. 14:30 → 2:30 PM (HH:MM 24h from native time picker) */
+export function formatTime12FromTime24(time24) {
+  if (!time24 || typeof time24 !== "string") return "";
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(time24).trim());
+  if (!m) return String(time24).trim();
+  const hh = Number(m[1]);
+  const mm = m[2];
+  if (!Number.isFinite(hh) || hh < 0 || hh > 23) return String(time24).trim();
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 || 12;
+  return `${h12}:${mm} ${period}`;
+}
+
+export function slotDisplayTime(slot) {
+  if (!slot) return "—";
+  if (slot.time24) return formatTime12FromTime24(slot.time24);
+  if (slot.time) return String(slot.time);
+  return "—";
+}
+
+export function compareSlotRows(a, b) {
+  const di = (Number(a.dayIndex) || 0) - (Number(b.dayIndex) || 0);
+  if (di !== 0) return di;
+  const ta = String(a.time24 || a.time || "");
+  const tb = String(b.time24 || b.time || "");
+  return ta.localeCompare(tb);
+}
+
 export function tsValue(ts) {
   if (!ts) return 0;
   if (typeof ts.toMillis === "function") return ts.toMillis();
@@ -43,12 +76,28 @@ export function tsValue(ts) {
   return 0;
 }
 
+/** Each "Got payment" records up to this many classes (oldest unpaid first). */
+export const PAYMENT_BUNDLE_SIZE = 10;
+
 export function unpaidClasses(studentId, classes, payments) {
   const totalLogged = classes.filter((c) => c.studentId === studentId).length;
   const totalPaid = payments
     .filter((p) => p.studentId === studentId)
     .reduce((sum, p) => sum + (Number(p.classCount) || 0), 0);
   return Math.max(0, totalLogged - totalPaid);
+}
+
+/** 1–10: position within the current bundle (e.g. 13 unpaid → 3 toward next Rs). */
+export function unpaidInCurrentBundle(totalUnpaid) {
+  if (totalUnpaid <= 0) return 0;
+  const r = totalUnpaid % PAYMENT_BUNDLE_SIZE;
+  return r === 0 ? PAYMENT_BUNDLE_SIZE : r;
+}
+
+/** Classes covered by the next "Got payment" (one bundle at a time, oldest first). */
+export function nextPaymentClassCount(studentId, classes, payments) {
+  const u = unpaidClasses(studentId, classes, payments);
+  return Math.min(u, PAYMENT_BUNDLE_SIZE);
 }
 
 export function totalPaidClassCount(studentId, payments) {

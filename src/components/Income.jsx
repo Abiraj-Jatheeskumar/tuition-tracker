@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext";
+import { useDialog } from "../context/DialogContext";
+import { useToast } from "../context/ToastContext";
 import { useStudents } from "../hooks/useStudents";
 import { usePayments } from "../hooks/usePayments";
+import PageHero from "./PageHero";
 import {
   AVATAR_COLORS,
   formatRs,
@@ -10,15 +17,128 @@ import {
   SUBJECT_LABELS,
   totalClassesPaidAll,
   totalIncomeAll,
+  todayYYYYMMDD,
   uniquePaymentMonths,
 } from "../utils/helpers";
 
+function PaymentEditorPortal({ payment, uid, onClose, onSaved, showAlert }) {
+  const [classCount, setClassCount] = useState(String(payment.classCount ?? ""));
+  const [pricePerClass, setPricePerClass] = useState(String(payment.pricePerClass ?? ""));
+  const [date, setDate] = useState(payment.date || todayYYYYMMDD());
+  const [busy, setBusy] = useState(false);
+
+  const computed = useMemo(() => {
+    const cc = Number.parseInt(String(classCount), 10);
+    const pp = Number(pricePerClass);
+    if (!Number.isFinite(cc) || !Number.isFinite(pp) || cc < 1 || pp <= 0) return null;
+    return cc * pp;
+  }, [classCount, pricePerClass]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (computed === null) {
+      await showAlert({
+        title: "Check values",
+        message: "Use a positive class count and Rs. per class.",
+      });
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateDoc(doc(db, "users", uid, "payments", payment.id), {
+        classCount: Number.parseInt(String(classCount), 10),
+        pricePerClass: Number(pricePerClass),
+        totalAmount: computed,
+        date,
+      });
+      onSaved();
+    } catch (err) {
+      console.error(err);
+      await showAlert({
+        title: "Could not save",
+        message: err?.message || "Update failed.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[298] flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:items-center md:p-8">
+      <button
+        type="button"
+        className="absolute inset-0 z-0 animate-[fadeIn_0.2s_ease-out] bg-[rgba(10,22,28,0.48)] backdrop-blur-[4px]"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="income-edit-title"
+        className="relative z-10 max-h-[min(90dvh,calc(100%-2rem))] w-full max-w-md overflow-y-auto rounded-2xl border border-[rgba(255,255,255,0.55)] bg-[rgba(253,251,246,0.98)] px-5 py-6 shadow-xl ring-2 ring-black/[0.04] backdrop-blur-xl sm:px-7"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="income-edit-title" className="font-display text-lg font-bold text-[var(--text)]">
+          Edit payment
+        </h2>
+        <p className="mt-1 font-mono-nums text-xs text-[var(--muted)]">{payment.studentName}</p>
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Date received
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="tt-input mt-1 font-mono-nums" />
+          </label>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Classes in this payment
+            <input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              step="1"
+              value={classCount}
+              onChange={(e) => setClassCount(e.target.value)}
+              className="tt-input mt-1 font-mono-nums"
+            />
+          </label>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Rs. per class
+            <input
+              type="number"
+              inputMode="decimal"
+              min="1"
+              step="any"
+              value={pricePerClass}
+              onChange={(e) => setPricePerClass(e.target.value)}
+              className="tt-input mt-1 font-mono-nums"
+            />
+          </label>
+          <div className="rounded-xl border border-[rgba(26,122,92,0.2)] bg-[rgba(232,242,235,0.5)] px-3 py-2 text-sm text-[var(--accent)]">
+            Total:&nbsp;<span className="font-mono-nums font-semibold">{computed !== null ? formatRs(computed) : "—"}</span>
+          </div>
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row-reverse sm:justify-end">
+            <button type="submit" disabled={busy} className="tt-btn-accent min-h-[3rem] w-full px-6 sm:w-auto">
+              Save changes
+            </button>
+            <button type="button" className="tt-btn-ghost min-h-[3rem] w-full sm:w-auto" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function Income() {
+  const { user } = useAuth();
+  const { showConfirm, showAlert } = useDialog();
+  const { showToast } = useToast();
   const { students, loading: ls } = useStudents();
   const { payments, loading: lp } = usePayments();
   const loading = ls || lp;
   const months = useMemo(() => uniquePaymentMonths(payments), [payments]);
   const [month, setMonth] = useState("all");
+  const [editing, setEditing] = useState(null);
 
   const filtered = useMemo(() => {
     if (month === "all") return payments;
@@ -29,10 +149,39 @@ export default function Income() {
   const classesPaid = useMemo(() => totalClassesPaidAll(filtered), [filtered]);
   const paymentCount = filtered.length;
 
+  async function handleDeletePayment(p) {
+    if (!user) return;
+    const ok = await showConfirm({
+      title: "Delete this payment?",
+      message: `Remove ${formatRs(p.totalAmount)} from ${p.studentName}? Unpaid / paid tags on class history will recalculate for that student — sessions are not deleted.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Keep",
+    });
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "payments", p.id));
+      showToast("Payment removed — balances updated.");
+    } catch (err) {
+      console.error(err);
+      await showAlert({
+        title: "Could not delete",
+        message: err?.message || "Delete failed.",
+      });
+    }
+  }
+
   return (
     <div className="tt-page">
-      <h1 className="tt-heading">Income</h1>
-      <p className="tt-sub">Payments you have collected from students.</p>
+      <PageHero
+        eyebrow="Finance"
+        title="Income"
+        subtitle="Every payment captured from your tutoring — filter by month, edit details, or remove to recalc unpaid."
+        hint={
+          <>
+            Payments only change how sessions are counted (paid vs unpaid). They never delete class logs. Edit or delete here if you tapped &ldquo;Got payment&rdquo; by mistake.
+          </>
+        }
+      />
 
       {loading ? (
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -44,15 +193,15 @@ export default function Income() {
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="tt-stat">
             <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total payments collected</div>
-            <div className="relative z-[1] mt-1 font-mono-nums font-display text-3xl font-bold text-[var(--text)]">{paymentCount}</div>
+            <div className="relative z-[1] mt-1 font-mono-nums text-3xl font-bold tracking-tighter text-[var(--text)]">{paymentCount}</div>
           </div>
           <div className="tt-stat">
             <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total classes paid</div>
-            <div className="relative z-[1] mt-1 font-mono-nums font-display text-3xl font-bold text-[var(--text)]">{classesPaid}</div>
+            <div className="relative z-[1] mt-1 font-mono-nums text-3xl font-bold tracking-tighter text-[var(--text)]">{classesPaid}</div>
           </div>
           <div className="tt-stat">
             <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total income (Rs.)</div>
-            <div className="relative z-[1] mt-1 font-mono-nums font-display text-3xl font-bold tracking-tight text-[var(--text)]">
+            <div className="relative z-[1] mt-1 font-mono-nums text-3xl font-bold tracking-tighter text-[var(--text)]">
               {totalCollected.toLocaleString()}
             </div>
           </div>
@@ -66,7 +215,7 @@ export default function Income() {
           <select
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="tt-input mt-2 min-h-12 w-full min-w-0 sm:mt-0 sm:ml-0 sm:min-h-11 sm:min-w-[12rem]"
+            className="tt-input tt-select-touch mt-2 min-h-12 w-full min-w-0 sm:mt-0 sm:ml-0 sm:min-h-11 sm:min-w-[12rem]"
           >
             <option value="all">All months</option>
             {months.map((m) => (
@@ -93,36 +242,64 @@ export default function Income() {
             const st = students.find((s) => s.id === p.studentId);
             const color = st ? AVATAR_COLORS[studentAvatarIndex(st, students) % AVATAR_COLORS.length] : AVATAR_COLORS[0];
             return (
-              <li
-                key={p.id}
-                className="tt-card-solid tt-card-hover flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:py-3"
-              >
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-sm font-bold shadow-sm"
-                  style={{ background: color.bg, color: color.fg }}
-                >
-                  {initials(p.studentName || "?")}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-display font-semibold text-[var(--text)]">{p.studentName}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(p.subject)}`}>
-                      {SUBJECT_LABELS[p.subject] || p.subject}
-                    </span>
-                    <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{p.date}</span>
+              <li key={p.id} className="tt-card-solid tt-card-hover rounded-2xl border px-4 py-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                  <div className="flex min-w-0 gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-sm font-bold shadow-sm"
+                      style={{ background: color.bg, color: color.fg }}
+                    >
+                      {initials(p.studentName || "?")}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-display font-semibold text-[var(--text)]">{p.studentName}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(p.subject)}`}>
+                          {SUBJECT_LABELS[p.subject] || p.subject}
+                        </span>
+                        <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{p.date}</span>
+                      </div>
+                      <div className="mt-1 font-mono-nums text-xs font-medium text-[var(--muted)]">
+                        {p.classCount} classes × {formatRs(p.pricePerClass)}
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-1 font-mono-nums text-xs font-medium text-[var(--muted)]">
-                    {p.classCount} classes × {formatRs(p.pricePerClass)}
+                  <div className="flex flex-col gap-3 border-t border-[rgba(28,27,24,0.06)] pt-3 sm:flex-1 sm:max-w-xs sm:flex-none sm:items-end sm:border-0 sm:pt-0">
+                    <div className="text-right font-mono-nums text-xl font-bold tracking-tighter text-[var(--accent)] sm:text-2xl">
+                      {formatRs(p.totalAmount)}
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button type="button" className="tt-btn-ghost min-h-11 px-6 text-[0.8125rem]" onClick={() => setEditing(p)}>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="tt-btn-ghost min-h-11 px-6 text-[0.8125rem] text-[var(--red)] hover:border-[rgba(197,48,48,0.35)] hover:bg-[var(--red-light)]"
+                        onClick={() => handleDeletePayment(p)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="w-full shrink-0 border-t border-[rgba(28,27,24,0.06)] pt-3 text-right font-mono-nums font-display text-xl font-bold tracking-tight text-[var(--accent)] sm:w-auto sm:border-0 sm:pt-0 sm:text-lg">
-                  {formatRs(p.totalAmount)}
                 </div>
               </li>
             );
           })}
         </ul>
       )}
+
+      {editing && user ? (
+        <PaymentEditorPortal
+          payment={editing}
+          uid={user.uid}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            showToast("Payment updated.");
+          }}
+          showAlert={showAlert}
+        />
+      ) : null}
     </div>
   );
 }

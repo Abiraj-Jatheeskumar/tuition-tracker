@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
@@ -7,10 +8,13 @@ import { useDialog } from "../context/DialogContext";
 import { useStudents } from "../hooks/useStudents";
 import { useClasses } from "../hooks/useClasses";
 import { usePayments } from "../hooks/usePayments";
+import PaymentUndoBar from "./PaymentUndoBar";
+import PageHero from "./PageHero";
 import {
   AVATAR_COLORS,
   formatRs,
   initials,
+  nextPaymentClassCount,
   sortStudentsByUnpaid,
   studentAvatarIndex,
   subjectBadgeClasses,
@@ -18,6 +22,7 @@ import {
   todayYYYYMMDD,
   totalClassesLogged,
   unpaidClasses,
+  unpaidInCurrentBundle,
   totalIncomeAll,
 } from "../utils/helpers";
 
@@ -26,7 +31,7 @@ function StatCard({ label, value, mono }) {
     <div className="tt-stat">
       <div className="text-xs font-medium text-[var(--muted)]">{label}</div>
       <div
-        className={`relative z-[1] mt-1 font-display text-2xl font-bold tracking-tight text-[var(--text)] ${mono ? "font-mono-nums tracking-tighter" : ""}`}
+        className={`relative z-[1] mt-1 text-2xl font-bold tracking-tighter text-[var(--text)] ${mono ? "font-mono-nums" : "font-display"}`}
       >
         {value}
       </div>
@@ -34,11 +39,16 @@ function StatCard({ label, value, mono }) {
   );
 }
 
-function CollectBanner({ student, amountRs, onCollect }) {
+function CollectBanner({ student, unpaidTotal, bundlePayCount, bundleAmountRs, onCollect }) {
+  const subtitle =
+    unpaidTotal > bundlePayCount
+      ? `${bundlePayCount}-class bundle (oldest first) · ${unpaidTotal} unpaid total → ${bundleAmountRs}`
+      : `10 classes ready · ${bundleAmountRs}`;
   return (
-    <div className="tt-banner flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm font-semibold leading-snug text-[var(--accent)]">
-        {student.name} — 10 classes done! {amountRs} to collect
+    <div className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-[rgba(26,122,92,0.32)] bg-gradient-to-br from-[rgba(238,247,241,0.98)] via-white/95 to-[rgba(237,239,253,0.55)] px-4 py-3.5 shadow-[0_20px_48px_-32px_rgba(13,74,53,0.42)] ring-2 ring-[rgba(26,122,92,0.08)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div aria-hidden className="pointer-events-none absolute -right-4 -top-10 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(26,122,92,0.15)_0%,transparent_70%)] blur-xl" />
+      <p className="relative text-sm font-semibold leading-snug text-[var(--accent)]">
+        {student.name} — {subtitle}
       </p>
       <button
         type="button"
@@ -77,35 +87,50 @@ export default function Dashboard() {
   const totalIncome = totalIncomeAll(payments);
   const readyCount = readyStudents.length;
 
+  const [undoPayment, setUndoPayment] = useState(null);
+  const dismissUndo = useCallback(() => setUndoPayment(null), []);
+
   async function collect(student) {
     const uid = user.uid;
     const unpaid = unpaidClasses(student.id, classes, payments);
     if (unpaid <= 0) return;
-    const totalAmount = unpaid * student.pricePerClass;
+    const payCount = nextPaymentClassCount(student.id, classes, payments);
+    const totalAmount = payCount * student.pricePerClass;
+    const extra =
+      unpaid > payCount
+        ? ` (${unpaid} unpaid total — this payment covers the oldest ${payCount} toward this bundle.)`
+        : "";
     const confirmed = await showConfirm({
       title: "Record payment?",
-      message: `${formatRs(totalAmount)} for ${unpaid} class(es)? This updates income and resets unpaid counting.`,
+      message: `${formatRs(totalAmount)} for ${payCount} class(es)?${extra} Older sessions are marked paid first; the rest stay toward the next bundle.`,
       confirmLabel: "Record payment",
       cancelLabel: "Not yet",
     });
     if (!confirmed) return;
-    await addDoc(collection(db, "users", uid, "payments"), {
+    const pref = await addDoc(collection(db, "users", uid, "payments"), {
       studentId: student.id,
       studentName: student.name,
       subject: student.subject,
-      classCount: unpaid,
+      classCount: payCount,
       pricePerClass: student.pricePerClass,
       totalAmount,
       date: todayYYYYMMDD(),
       collectedAt: serverTimestamp(),
     });
-    showToast(`${formatRs(totalAmount)} recorded from ${student.name}`);
+    setUndoPayment({
+      id: pref.id,
+      line: `${formatRs(totalAmount)} · ${student.name}`,
+    });
   }
 
   return (
+    <>
     <div className="tt-page">
-      <h1 className="tt-heading">Dashboard</h1>
-      <p className="tt-sub">Overview of students, classes, and collections.</p>
+      <PageHero
+        eyebrow="Overview"
+        title="Dashboard"
+        subtitle="Totals for your tutoring practice — who owes you, bundles to collect, and quick entry to profiles."
+      />
 
       {loading ? (
         <div className="mt-8">
@@ -122,14 +147,20 @@ export default function Dashboard() {
 
       {!loading && readyStudents.length > 0 ? (
         <div className="mt-8 flex flex-col gap-3">
-          {readyStudents.map((s) => (
+          {readyStudents.map((s) => {
+            const uTotal = unpaidClasses(s.id, classes, payments);
+            const payCnt = nextPaymentClassCount(s.id, classes, payments);
+            return (
             <CollectBanner
               key={s.id}
               student={s}
-              amountRs={formatRs(unpaidClasses(s.id, classes, payments) * s.pricePerClass)}
+              unpaidTotal={uTotal}
+              bundlePayCount={payCnt}
+              bundleAmountRs={formatRs(payCnt * s.pricePerClass)}
               onCollect={collect}
             />
-          ))}
+            );
+          })}
         </div>
       ) : null}
 
@@ -154,10 +185,11 @@ export default function Dashboard() {
         <div className="mt-4 flex flex-col gap-3">
           {sorted.map((s) => {
             const unpaid = unpaidClasses(s.id, classes, payments);
+            const bundlePos = unpaidInCurrentBundle(unpaid);
             const total = classes.filter((c) => c.studentId === s.id).length;
             const color =
               AVATAR_COLORS[studentAvatarIndex(s, students) % AVATAR_COLORS.length];
-            const pct = Math.min(100, (unpaid / 10) * 100);
+            const pct = Math.min(100, (bundlePos / 10) * 100);
             return (
               <Link
                 key={s.id}
@@ -187,7 +219,7 @@ export default function Dashboard() {
                     <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color.fg }} />
                   </div>
                   <div className="mt-1 font-mono-nums text-[11px] text-[var(--muted)]">
-                    {unpaid}/10 unpaid · {total} total classes
+                    {bundlePos}/10 this bundle · {unpaid} unpaid total · {total} classes logged
                   </div>
                 </div>
               </Link>
@@ -196,5 +228,18 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    {undoPayment ? (
+      <PaymentUndoBar
+        uid={user.uid}
+        paymentId={undoPayment.id}
+        summaryLine={`Recorded: ${undoPayment.line}. Mistake? Undo within 30s or delete later in Income.`}
+        onUndoComplete={() => {
+          dismissUndo();
+          showToast("Payment removed — unpaid counts updated.");
+        }}
+        onExpire={dismissUndo}
+      />
+    ) : null}
+    </>
   );
 }

@@ -123,14 +123,20 @@ function MobileTabs() {
 
 function AppShell({ user }) {
   return (
-    <div className="tt-mesh flex min-h-dvh min-h-[100svh] w-full overflow-x-hidden">
+    <div className="tt-mesh flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden">
       <Sidebar user={user} />
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header
           className="tt-mobile-header flex shrink-0 items-center justify-between gap-3 py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden"
         >
-          <div className="font-display text-lg font-bold tracking-tight text-[var(--text)]">
-            Tuition<span className="bg-gradient-to-r from-[var(--accent-bright)] to-[#4338ca] bg-clip-text text-transparent">Tracker</span>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent-bright)] via-[#1b6b50] to-[#4338ca] font-display text-[0.7rem] font-bold text-white shadow-[0_10px_24px_-12px_rgba(13,74,53,0.45)] ring-2 ring-white/50">
+              TT
+            </span>
+            <div className="font-display text-[1.0625rem] font-extrabold leading-tight tracking-tighter text-[var(--text)]">
+              Tuition
+              <span className="bg-gradient-to-r from-[var(--accent-bright)] to-[var(--violet)] bg-clip-text text-transparent">Tracker</span>
+            </div>
           </div>
           <button
             type="button"
@@ -154,7 +160,7 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <div className="tt-mesh min-h-dvh">
+      <div className="tt-mesh flex h-[100dvh] max-h-[100dvh] min-h-0 w-full items-center justify-center overflow-hidden">
         <Splash />
       </div>
     );
