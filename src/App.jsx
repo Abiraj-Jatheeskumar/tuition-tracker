@@ -13,14 +13,17 @@ import AddStudent from "./components/AddStudent";
 
 function Splash() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">
-      Loading…
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
+      <div className="tt-splash-ring" aria-hidden />
+      <span className="font-display text-sm font-medium tracking-wide text-[var(--muted)]">
+        Loading workspace…
+      </span>
     </div>
   );
 }
 
 function TabIcon({ name, active }) {
-  const c = active ? "var(--accent)" : "var(--muted)";
+  const c = active ? "#0d4a35" : "#878680";
   if (name === "/dashboard") {
     return (
       <svg className="mb-0.5 h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -83,8 +86,12 @@ function MobileTabs() {
     { to: "/add-student", label: "Add", match: (p) => p.startsWith("/add-student") },
   ];
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--border)] bg-[var(--surface)] px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 md:hidden">
-      <div className="mx-auto flex max-w-lg items-stretch justify-between gap-0">
+    <nav
+      aria-label="Main"
+      className="tt-mobile-nav fixed bottom-0 left-0 right-0 z-50 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_32px_-8px_rgba(0,0,0,0.08)] md:hidden"
+      style={{ paddingLeft: "max(0.25rem, env(safe-area-inset-left))", paddingRight: "max(0.25rem, env(safe-area-inset-right))" }}
+    >
+      <div className="mx-auto flex max-w-lg items-end justify-between gap-0.5 sm:gap-1">
         {items.map((item) => {
           const on = item.match(path);
           return (
@@ -92,11 +99,19 @@ function MobileTabs() {
               key={item.to}
               type="button"
               onClick={() => navigate(item.to)}
-              className={`flex min-h-12 min-w-[44px] flex-1 flex-col items-center justify-center rounded-[10px] text-[10px] font-semibold ${
-                on ? "text-[var(--accent)]" : "text-[var(--muted)]"
+              className={`flex min-h-[52px] min-w-[42px] flex-1 flex-col items-center justify-center rounded-xl pb-1 pt-0.5 text-[10px] font-semibold leading-tight tracking-wide transition-colors active:opacity-85 sm:text-[11px] ${
+                on
+                  ? "text-[var(--accent)] [&_svg]:drop-shadow-[0_1px_2px_rgba(13,74,53,0.25)]"
+                  : "text-[var(--muted)]"
               }`}
             >
-              <TabIcon name={item.to} active={on} />
+              <span
+                className={`flex flex-col items-center justify-center rounded-xl px-2 py-1 transition-[background,transform] duration-200 ${
+                  on ? "scale-105 bg-[rgba(13,74,53,0.09)] shadow-[inset_0_0_0_1px_rgba(13,74,53,0.1)]" : ""
+                }`}
+              >
+                <TabIcon name={item.to} active={on} />
+              </span>
               {item.label}
             </button>
           );
@@ -108,22 +123,24 @@ function MobileTabs() {
 
 function AppShell({ user }) {
   return (
-    <div className="flex min-h-dvh bg-[var(--bg)]">
+    <div className="tt-mesh flex min-h-dvh min-h-[100svh] w-full overflow-x-hidden">
       <Sidebar user={user} />
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 md:hidden">
-          <div className="text-base font-semibold text-[var(--text)]">
-            Tuition<span className="text-[var(--accent)]">Tracker</span>
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden">
+        <header
+          className="tt-mobile-header flex shrink-0 items-center justify-between gap-3 py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden"
+        >
+          <div className="font-display text-lg font-bold tracking-tight text-[var(--text)]">
+            Tuition<span className="bg-gradient-to-r from-[var(--accent-bright)] to-[#4338ca] bg-clip-text text-transparent">Tracker</span>
           </div>
           <button
             type="button"
             onClick={() => signOut(auth)}
-            className="min-h-10 rounded-[10px] border border-[var(--border)] px-3 text-xs font-semibold text-[var(--muted)]"
+            className="tt-btn-ghost min-h-10 rounded-xl px-3 text-xs font-semibold text-[var(--muted)] hover:text-[var(--accent)]"
           >
             Sign out
           </button>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="isolate min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           <Outlet />
         </main>
         <MobileTabs />
@@ -136,7 +153,11 @@ export default function App() {
   const { user, authReady } = useAuth();
 
   if (!authReady) {
-    return <Splash />;
+    return (
+      <div className="tt-mesh min-h-dvh">
+        <Splash />
+      </div>
+    );
   }
 
   if (!user) {

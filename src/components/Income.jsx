@@ -25,68 +25,48 @@ export default function Income() {
     return payments.filter((p) => String(p.date || "").startsWith(month));
   }, [payments, month]);
 
-  const totalCollected = useMemo(
-    () => totalIncomeAll(filtered),
-    [filtered],
-  );
-  const classesPaid = useMemo(
-    () => totalClassesPaidAll(filtered),
-    [filtered],
-  );
+  const totalCollected = useMemo(() => totalIncomeAll(filtered), [filtered]);
+  const classesPaid = useMemo(() => totalClassesPaidAll(filtered), [filtered]);
   const paymentCount = filtered.length;
 
   return (
-    <div className="p-4 pb-24 md:p-6 md:pb-6">
-      <h1 className="text-xl font-semibold text-[var(--text)]">Income</h1>
-      <p className="mt-0.5 text-sm text-[var(--muted)]">
-        Payments you have collected from students.
-      </p>
+    <div className="tt-page">
+      <h1 className="tt-heading">Income</h1>
+      <p className="tt-sub">Payments you have collected from students.</p>
 
       {loading ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="skeleton-pulse h-[88px] rounded-[14px] border border-[var(--border)] bg-[var(--surface)]"
-            />
+            <div key={i} className="skeleton-pulse h-[96px] rounded-2xl border border-[rgba(28,27,24,0.06)] bg-white/50 shadow-sm" />
           ))}
         </div>
       ) : (
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)]">
-            <div className="text-xs font-medium text-[var(--muted)]">
-              Total payments collected
-            </div>
-            <div className="mt-1 font-mono-nums text-xl font-semibold text-[var(--text)]">
-              {paymentCount}
-            </div>
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="tt-stat">
+            <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total payments collected</div>
+            <div className="relative z-[1] mt-1 font-mono-nums font-display text-3xl font-bold text-[var(--text)]">{paymentCount}</div>
           </div>
-          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)]">
-            <div className="text-xs font-medium text-[var(--muted)]">
-              Total classes paid
-            </div>
-            <div className="mt-1 font-mono-nums text-xl font-semibold text-[var(--text)]">
-              {classesPaid}
-            </div>
+          <div className="tt-stat">
+            <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total classes paid</div>
+            <div className="relative z-[1] mt-1 font-mono-nums font-display text-3xl font-bold text-[var(--text)]">{classesPaid}</div>
           </div>
-          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)]">
-            <div className="text-xs font-medium text-[var(--muted)]">
-              Total income (Rs.)
-            </div>
-            <div className="mt-1 font-mono-nums text-xl font-semibold text-[var(--text)]">
+          <div className="tt-stat">
+            <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total income (Rs.)</div>
+            <div className="relative z-[1] mt-1 font-mono-nums font-display text-3xl font-bold tracking-tight text-[var(--text)]">
               {totalCollected.toLocaleString()}
             </div>
           </div>
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <label className="text-xs font-medium text-[var(--muted)]">
-          Month
+      <div className="tt-card-solid mt-8 flex flex-col gap-4 rounded-xl border px-4 py-4 sm:inline-flex sm:max-w-full sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-3 sm:py-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Filter</span>
+        <label className="flex w-full flex-col text-sm font-semibold text-[var(--text)] sm:w-auto sm:inline-flex sm:flex-row sm:items-center sm:gap-3">
+          <span className="shrink-0 sm:pt-2">Month</span>
           <select
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="ml-2 min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+            className="tt-input mt-2 min-h-12 w-full min-w-0 sm:mt-0 sm:ml-0 sm:min-h-11 sm:min-w-[12rem]"
           >
             <option value="all">All months</option>
             {months.map((m) => (
@@ -98,55 +78,44 @@ export default function Income() {
         </label>
       </div>
 
-      <h2 className="mt-6 text-sm font-semibold text-[var(--text)]">
-        Payment history
-      </h2>
+      <h2 className="tt-section-title mt-10">Payment history</h2>
       {loading ? (
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-3">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="skeleton-pulse h-16 rounded-[14px] border border-[var(--border)] bg-[var(--surface)]"
-            />
+            <div key={i} className="skeleton-pulse h-[76px] rounded-2xl border border-[rgba(28,27,24,0.06)] bg-white/50 shadow-sm" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p className="mt-2 text-sm text-[var(--muted)]">No payments in this range.</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">No payments in this range.</p>
       ) : (
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-4 flex flex-col gap-3">
           {filtered.map((p) => {
             const st = students.find((s) => s.id === p.studentId);
-            const color = st
-              ? AVATAR_COLORS[studentAvatarIndex(st, students) % AVATAR_COLORS.length]
-              : AVATAR_COLORS[0];
+            const color = st ? AVATAR_COLORS[studentAvatarIndex(st, students) % AVATAR_COLORS.length] : AVATAR_COLORS[0];
             return (
               <li
                 key={p.id}
-                className="flex items-center gap-3 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3"
+                className="tt-card-solid tt-card-hover flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:py-3"
               >
                 <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-sm font-bold shadow-sm"
                   style={{ background: color.bg, color: color.fg }}
                 >
                   {initials(p.studentName || "?")}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-[var(--text)]">{p.studentName}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(p.subject)}`}
-                    >
+                  <div className="font-display font-semibold text-[var(--text)]">{p.studentName}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(p.subject)}`}>
                       {SUBJECT_LABELS[p.subject] || p.subject}
                     </span>
-                    <span className="font-mono-nums text-xs text-[var(--muted)]">
-                      {p.date}
-                    </span>
+                    <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{p.date}</span>
                   </div>
-                  <div className="mt-1 font-mono-nums text-xs text-[var(--muted)]">
+                  <div className="mt-1 font-mono-nums text-xs font-medium text-[var(--muted)]">
                     {p.classCount} classes × {formatRs(p.pricePerClass)}
                   </div>
                 </div>
-                <div className="shrink-0 font-mono-nums text-sm font-semibold text-[var(--text)]">
+                <div className="w-full shrink-0 border-t border-[rgba(28,27,24,0.06)] pt-3 text-right font-mono-nums font-display text-xl font-bold tracking-tight text-[var(--accent)] sm:w-auto sm:border-0 sm:pt-0 sm:text-lg">
                   {formatRs(p.totalAmount)}
                 </div>
               </li>

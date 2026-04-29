@@ -2,10 +2,6 @@ import { NavLink } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 
-const linkClass =
-  "flex min-h-11 items-center gap-2 rounded-[10px] px-3 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--accent-light)]";
-const activeClass = "bg-[var(--accent-light)] text-[var(--accent)] font-semibold";
-
 const items = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/students", label: "Students" },
@@ -24,40 +20,46 @@ export default function Sidebar({ user }) {
   }
 
   return (
-    <aside className="hidden h-dvh w-[220px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] md:flex">
-      <div className="border-b border-[var(--border)] px-4 py-5">
-        <div className="text-lg font-semibold tracking-tight text-[var(--text)]">
-          Tuition<span className="text-[var(--accent)]">Tracker</span>
+    <aside className="tt-sidebar hidden h-dvh w-[226px] shrink-0 flex-col md:flex">
+      <div className="border-b border-[rgba(28,27,24,0.06)] px-4 py-[1.125rem]">
+        <div className="font-display text-lg font-bold tracking-tight text-[var(--text)]">
+          Tuition
+          <span className="bg-gradient-to-r from-[var(--accent-bright)] to-[#4338ca] bg-clip-text text-transparent">
+            Tracker
+          </span>
         </div>
+        <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+          Class hub
+        </p>
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5 p-3">
+      <nav className="flex flex-1 flex-col gap-1 p-3">
         {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `${linkClass} ${isActive ? activeClass : ""}`
+              `tt-nav-link ${isActive ? "tt-active" : ""}`
             }
           >
             {item.label}
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-[var(--border)] p-3">
-        <div className="mb-2 flex items-center gap-2 px-1">
+      <div className="border-t border-[rgba(28,27,24,0.06)] p-3">
+        <div className="mb-3 flex items-center gap-2 rounded-xl bg-[rgba(13,74,53,0.05)] px-2 py-2">
           {user?.photoURL ? (
             <img
               src={user.photoURL}
               alt=""
-              className="h-9 w-9 rounded-full border border-[var(--border)] object-cover"
+              className="h-10 w-10 rounded-xl border border-white/80 object-cover shadow-sm"
             />
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-light)] text-xs font-semibold text-[var(--accent)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent-light)] to-[rgba(99,102,241,0.15)] font-display text-xs font-bold text-[var(--accent)]">
               {(user?.displayName || user?.email || "?").slice(0, 1).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-medium text-[var(--text)]">
+            <div className="truncate text-xs font-semibold text-[var(--text)]">
               {user?.displayName || "Tutor"}
             </div>
             <div className="truncate text-[11px] text-[var(--muted)]">
@@ -65,11 +67,7 @@ export default function Sidebar({ user }) {
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="min-h-10 w-full rounded-[10px] border border-[var(--border)] bg-white px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--text)] hover:text-[var(--text)]"
-        >
+        <button type="button" onClick={handleSignOut} className="tt-btn-ghost w-full text-[var(--muted)] hover:text-[var(--accent)]">
           Sign out
         </button>
       </div>

@@ -26,10 +26,10 @@ export function ToastProvider({ children }) {
       {children}
       {toast ? (
         <div
-          className="toast-animate fixed bottom-6 left-1/2 z-[100] max-w-[min(90vw,28rem)] -translate-x-1/2 rounded-full bg-[#1C1B18] px-5 py-3 text-center text-sm font-medium text-white shadow-lg"
+          className="toast-animate fixed left-1/2 z-[110] max-w-[min(92vw,28rem)] -translate-x-1/2 rounded-2xl border border-[rgba(255,255,255,0.12)] bg-gradient-to-r from-[#1e3a2f] via-[#1a2e28] to-[#251d3d] px-5 py-3.5 text-center text-sm font-medium leading-snug text-[#faf9f5] shadow-[0_20px_48px_-12px_rgba(0,0,0,0.45)] ring-1 ring-white/10 backdrop-blur-sm [bottom:calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-10"
           role="status"
         >
-          {toast}
+          <span className="block leading-snug">{toast}</span>
         </div>
       ) : null}
     </ToastContext.Provider>

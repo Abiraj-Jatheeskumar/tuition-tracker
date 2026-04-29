@@ -12,6 +12,7 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useStudents } from "../hooks/useStudents";
+import { useDialog } from "../context/DialogContext";
 import {
   subjectBadgeClasses,
   SUBJECT_LABELS,
@@ -32,6 +33,7 @@ async function removeStudentAndRelated(db, uid, studentId) {
 export default function AddStudent() {
   const { user } = useAuth();
   const { students, loading } = useStudents();
+  const { showAlert, showConfirm } = useDialog();
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("chem");
   const [price, setPrice] = useState("");
@@ -43,7 +45,10 @@ export default function AddStudent() {
     if (!user || !name.trim() || !price) return;
     const n = Number(price);
     if (!Number.isFinite(n) || n <= 0) {
-      alert("Enter a valid price per class.");
+      await showAlert({
+        title: "Check the price",
+        message: "Enter a valid positive number for price per class (Rs.).",
+      });
       return;
     }
     setSaving(true);
@@ -61,7 +66,10 @@ export default function AddStudent() {
       setSubject("chem");
     } catch (err) {
       console.error(err);
-      alert(err?.message || "Could not add student");
+      await showAlert({
+        title: "Couldn't save student",
+        message: err?.message || "Could not add student",
+      });
     } finally {
       setSaving(false);
     }
@@ -69,48 +77,38 @@ export default function AddStudent() {
 
   async function handleRemove(student) {
     if (!user) return;
-    if (
-      !window.confirm(
-        `Remove ${student.name}? This deletes their classes and payment records for this student.`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: `Remove ${student.name}?`,
+      message:
+        "This deletes this student's profile and all related class logs and payments in Firestore.",
+      confirmLabel: "Remove",
+      cancelLabel: "Cancel",
+    });
+    if (!confirmed) return;
     try {
       await removeStudentAndRelated(db, user.uid, student.id);
     } catch (err) {
       console.error(err);
-      alert(err?.message || "Could not remove");
+      await showAlert({
+        title: "Couldn't remove",
+        message: err?.message || "Could not remove",
+      });
     }
   }
 
   return (
-    <div className="p-4 pb-24 md:p-6 md:pb-6">
-      <h1 className="text-xl font-semibold text-[var(--text)]">Add Student</h1>
-      <p className="mt-0.5 text-sm text-[var(--muted)]">
-        Create a profile for each learner you teach.
-      </p>
+    <div className="tt-page">
+      <h1 className="tt-heading">Add Student</h1>
+      <p className="tt-sub">Create a profile for each learner you teach.</p>
 
-      <form
-        onSubmit={handleSubmit}
-        className="mt-6 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)]"
-      >
-        <label className="block text-xs font-medium text-[var(--muted)]">
+      <form onSubmit={handleSubmit} className="tt-card mt-8 border px-6 py-6 shadow-xl shadow-emerald-900/[0.06]">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           Student name *
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-          />
+          <input required value={name} onChange={(e) => setName(e.target.value)} className="tt-input mt-2" />
         </label>
-        <label className="mt-3 block text-xs font-medium text-[var(--muted)]">
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           Subject
-          <select
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-          >
+          <select value={subject} onChange={(e) => setSubject(e.target.value)} className="tt-input mt-2">
             {SUBJECT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -118,7 +116,7 @@ export default function AddStudent() {
             ))}
           </select>
         </label>
-        <label className="mt-3 block text-xs font-medium text-[var(--muted)]">
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           Price per class (Rs.) *
           <input
             required
@@ -127,69 +125,50 @@ export default function AddStudent() {
             step="1"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 font-mono-nums text-sm outline-none ring-[var(--accent)] focus:ring-2"
+            className="tt-input mt-2 font-mono-nums"
           />
         </label>
-        <label className="mt-3 block text-xs font-medium text-[var(--muted)]">
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           Phone (optional)
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-          />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} className="tt-input mt-2" />
         </label>
-        <button
-          type="submit"
-          disabled={saving}
-          className="mt-4 min-h-11 rounded-[10px] bg-[var(--text)] px-6 text-sm font-semibold text-white disabled:opacity-60"
-        >
+        <button type="submit" disabled={saving} className="tt-btn-dark mt-7 min-h-[3rem] px-10">
           Add Student
         </button>
       </form>
 
-      <h2 className="mt-8 text-sm font-semibold text-[var(--text)]">
-        Existing students
-      </h2>
+      <h2 className="tt-section-title mt-10">Existing students</h2>
       {loading ? (
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-3">
           {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="skeleton-pulse h-14 rounded-[14px] border border-[var(--border)] bg-[var(--surface)]"
-            />
+            <div key={i} className="skeleton-pulse h-16 rounded-2xl border border-[rgba(28,27,24,0.06)] bg-white/50 shadow-sm" />
           ))}
         </div>
       ) : students.length === 0 ? (
-        <p className="mt-2 text-sm text-[var(--muted)]">No students yet.</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">No students yet.</p>
       ) : (
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-4 flex flex-col gap-3">
           {students.map((s) => (
             <li
               key={s.id}
-              className="flex flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 sm:flex-row sm:items-center sm:justify-between"
+              className="tt-card-solid tt-card-hover flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <div className="font-semibold text-[var(--text)]">{s.name}</div>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(s.subject)}`}
-                  >
+                <div className="font-display text-lg font-semibold text-[var(--text)]">{s.name}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(s.subject)}`}>
                     {SUBJECT_LABELS[s.subject] || s.subject}
                   </span>
-                  <span className="font-mono-nums text-xs text-[var(--muted)]">
-                    {formatRs(s.pricePerClass)}
-                  </span>
+                  <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{formatRs(s.pricePerClass)}</span>
                   {s.phone ? (
-                    <span className="font-mono-nums text-xs text-[var(--muted)]">
-                      {s.phone}
-                    </span>
+                    <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{s.phone}</span>
                   ) : null}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => handleRemove(s)}
-                className="min-h-10 rounded-[10px] border border-[var(--border)] px-3 text-xs font-semibold text-[var(--red)] hover:bg-[var(--red-light)]"
+                className="tt-btn-ghost min-h-11 shrink-0 self-start text-[var(--red)] hover:border-[rgba(197,48,48,0.35)] hover:bg-[var(--red-light)] hover:text-[var(--red)] sm:self-center"
               >
                 Remove
               </button>

@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import { useDialog } from "../context/DialogContext";
 import { useSlots } from "../hooks/useSlots";
 import {
   DAYS,
@@ -19,6 +20,7 @@ import {
 
 export default function Timetable() {
   const { user } = useAuth();
+  const { showConfirm } = useDialog();
   const { slots, loading } = useSlots();
   const [day, setDay] = useState("Monday");
   const [time, setTime] = useState("");
@@ -45,30 +47,27 @@ export default function Timetable() {
 
   async function handleDelete(id) {
     if (!user) return;
-    if (!window.confirm("Remove this slot?")) return;
+    const confirmed = await showConfirm({
+      title: "Remove this slot?",
+      message: "The timetable entry will disappear from all devices.",
+      confirmLabel: "Remove",
+      cancelLabel: "Keep",
+    });
+    if (!confirmed) return;
     await deleteDoc(doc(db, "users", user.uid, "slots", id));
   }
 
   return (
-    <div className="p-4 pb-24 md:p-6 md:pb-6">
-      <h1 className="text-xl font-semibold text-[var(--text)]">Timetable</h1>
-      <p className="mt-0.5 text-sm text-[var(--muted)]">
-        Weekly schedule reference — not tied to payments.
-      </p>
+    <div className="tt-page">
+      <h1 className="tt-heading">Timetable</h1>
+      <p className="tt-sub">Weekly schedule reference — not tied to payments.</p>
 
-      <form
-        onSubmit={handleAdd}
-        className="mt-6 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)]"
-      >
-        <h2 className="text-sm font-semibold text-[var(--text)]">Add slot</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="block text-xs font-medium text-[var(--muted)]">
+      <form onSubmit={handleAdd} className="tt-card mt-8 border px-5 py-5 shadow-lg shadow-emerald-900/5">
+        <h2 className="font-display text-[0.9375rem] font-semibold text-[var(--text)]">Add slot</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Day
-            <select
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-              className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-            >
+            <select value={day} onChange={(e) => setDay(e.target.value)} className="tt-input">
               {DAYS.map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -76,22 +75,18 @@ export default function Timetable() {
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-[var(--muted)]">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Time
             <input
               value={time}
               onChange={(e) => setTime(e.target.value)}
               placeholder="4:00 PM"
-              className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 font-mono-nums text-sm outline-none ring-[var(--accent)] focus:ring-2"
+              className="tt-input font-mono-nums"
             />
           </label>
-          <label className="block text-xs font-medium text-[var(--muted)]">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Subject
-            <select
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-            >
+            <select value={subject} onChange={(e) => setSubject(e.target.value)} className="tt-input text-sm">
               {SUBJECT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -99,13 +94,9 @@ export default function Timetable() {
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-[var(--muted)]">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Duration
-            <select
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
-            >
+            <select value={duration} onChange={(e) => setDuration(e.target.value)} className="tt-input">
               {DURATION_OPTIONS.map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -113,66 +104,50 @@ export default function Timetable() {
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-[var(--muted)] sm:col-span-2 lg:col-span-1">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)] sm:col-span-2 lg:col-span-1">
             Venue (optional)
             <input
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
               placeholder="Home / Hall"
-              className="mt-1 w-full min-h-11 rounded-[10px] border border-[var(--border)] bg-white px-3 text-sm outline-none ring-[var(--accent)] focus:ring-2"
+              className="tt-input"
             />
           </label>
         </div>
-        <button
-          type="submit"
-          className="mt-4 min-h-11 rounded-[10px] bg-[var(--text)] px-6 text-sm font-semibold text-white"
-        >
+        <button type="submit" className="tt-btn-dark mt-6 min-h-[3rem] px-8">
           Add Slot
         </button>
       </form>
 
-      <h2 className="mt-8 text-sm font-semibold text-[var(--text)]">Your slots</h2>
+      <h2 className="tt-section-title mt-10">Your slots</h2>
       {loading ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="skeleton-pulse h-[120px] rounded-[14px] border border-[var(--border)] bg-[var(--surface)]"
-            />
+            <div key={i} className="skeleton-pulse min-h-[130px] rounded-2xl border border-[rgba(28,27,24,0.06)] bg-white/50 shadow-sm" />
           ))}
         </div>
       ) : slots.length === 0 ? (
-        <p className="mt-2 text-sm text-[var(--muted)]">No slots yet.</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">No slots yet.</p>
       ) : (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {slots.map((s) => (
             <div
               key={s.id}
-              className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)]"
+              className="tt-card-solid tt-card-hover relative overflow-hidden border px-5 py-4 pt-6 before:absolute before:left-0 before:right-0 before:top-0 before:z-0 before:h-1 before:bg-gradient-to-r before:from-[var(--accent-bright)] before:to-[var(--violet)]"
             >
-              <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                {s.day}
-              </div>
-              <div className="mt-1 font-mono-nums text-2xl font-semibold text-[var(--text)]">
-                {s.time}
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(s.subject)}`}
-                >
+              <div className="relative z-[1] text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{s.day}</div>
+              <div className="relative z-[1] mt-2 font-mono-nums text-3xl font-bold tracking-tight text-[var(--text)]">{s.time}</div>
+              <div className="relative z-[1] mt-3 flex flex-wrap items-center gap-2">
+                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(s.subject)}`}>
                   {SUBJECT_LABELS[s.subject] || s.subject}
                 </span>
-                <span className="font-mono-nums text-xs text-[var(--muted)]">
-                  {s.duration}
-                </span>
+                <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{s.duration}</span>
               </div>
-              {s.venue ? (
-                <div className="mt-2 text-xs text-[var(--muted)]">{s.venue}</div>
-              ) : null}
+              {s.venue ? <div className="relative z-[1] mt-2 text-xs text-[var(--muted)]">{s.venue}</div> : null}
               <button
                 type="button"
                 onClick={() => handleDelete(s.id)}
-                className="mt-3 min-h-10 w-full rounded-[10px] border border-[var(--border)] text-xs font-semibold text-[var(--red)] hover:bg-[var(--red-light)]"
+                className="tt-btn-ghost relative z-[1] mt-5 w-full min-h-11 text-[var(--red)] hover:border-[rgba(197,48,48,0.35)] hover:bg-[var(--red-light)] hover:text-[var(--red)]"
               >
                 Delete
               </button>

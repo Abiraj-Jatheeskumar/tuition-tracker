@@ -22,27 +22,25 @@ export default function Students() {
   const ready = sorted.filter((s) => unpaidClasses(s.id, classes, payments) >= 10);
 
   return (
-    <div className="p-4 pb-24 md:p-6 md:pb-6">
-      <h1 className="text-xl font-semibold text-[var(--text)]">Students</h1>
-      <p className="mt-0.5 text-sm text-[var(--muted)]">
-        Tap a student to log classes and view history.
-      </p>
+    <div className="tt-page">
+      <h1 className="tt-heading">Students</h1>
+      <p className="tt-sub">Tap a student to log classes and view history.</p>
 
       {!loading && ready.length > 0 ? (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-6 flex flex-col gap-3">
           {ready.map((s) => {
             const unpaid = unpaidClasses(s.id, classes, payments);
             return (
               <div
                 key={s.id}
-                className="flex flex-col gap-2 rounded-[14px] border border-[var(--accent)] bg-[var(--accent-light)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="tt-banner flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
               >
-                <p className="text-sm font-medium text-[var(--accent)]">
+                <p className="text-sm font-semibold leading-snug text-[var(--accent)]">
                   {s.name} — {unpaid} unpaid · {formatRs(unpaid * s.pricePerClass)} to collect
                 </p>
                 <Link
                   to={`/students/${s.id}`}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-[10px] bg-[var(--accent)] px-4 text-sm font-semibold text-white"
+                  className="tt-btn-accent inline-flex min-h-[2.75rem] items-center justify-center px-6 text-[0.9375rem] no-underline"
                 >
                   Open
                 </Link>
@@ -53,20 +51,17 @@ export default function Students() {
       ) : null}
 
       {loading ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="skeleton-pulse h-[180px] rounded-[14px] border border-[var(--border)] bg-[var(--surface)]"
-            />
+            <div key={i} className="skeleton-pulse min-h-[196px] rounded-2xl border border-[rgba(28,27,24,0.06)] bg-white/50 shadow-sm" />
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="mt-8 rounded-[14px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center text-sm text-[var(--muted)]">
+        <div className="tt-card-solid mt-10 border border-dashed border-[rgba(13,74,53,0.2)] px-8 py-14 text-center text-sm text-[var(--muted)]">
           No students yet.
         </div>
       ) : (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((s) => {
             const unpaid = unpaidClasses(s.id, classes, payments);
             const total = classes.filter((c) => c.studentId === s.id).length;
@@ -77,45 +72,41 @@ export default function Students() {
               <Link
                 key={s.id}
                 to={`/students/${s.id}`}
-                className={`relative flex flex-col rounded-[14px] border bg-[var(--surface)] p-4 shadow-[0_1px_3px_rgba(28,27,24,0.04)] transition hover:border-[var(--accent)] ${
+                className={`group tt-card tt-card-hover relative flex flex-col overflow-hidden border p-5 ${
                   unpaid >= 10
-                    ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/25"
-                    : "border-[var(--border)]"
+                    ? "border-[rgba(26,122,92,0.5)] shadow-[0_14px_48px_-20px_rgba(13,74,53,0.45)] ring-2 ring-[rgba(26,122,92,0.14)]"
+                    : ""
                 }`}
               >
                 {unpaid >= 10 ? (
-                  <span className="absolute right-3 top-3 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  <span className="absolute right-3 top-3 rounded-full bg-gradient-to-r from-[var(--accent-bright)] to-[var(--accent)] px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-emerald-700/25">
                     Collect
                   </span>
                 ) : null}
                 <div className="flex items-start gap-3">
                   <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-[0.9375rem] font-bold shadow-sm"
                     style={{ background: color.bg, color: color.fg }}
                   >
                     {initials(s.name)}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-[var(--text)]">{s.name}</div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <div className="font-display text-lg font-semibold text-[var(--text)]">{s.name}</div>
                     <span
-                      className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(s.subject)}`}
+                      className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${subjectBadgeClasses(s.subject)}`}
                     >
                       {SUBJECT_LABELS[s.subject] || s.subject}
                     </span>
                   </div>
                 </div>
-                <div className="mt-3 font-mono-nums text-sm text-[var(--muted)]">
-                  {formatRs(s.pricePerClass)} / class
-                </div>
-                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
+                <div className="mt-4 font-mono-nums text-sm font-medium text-[var(--muted)]">{formatRs(s.pricePerClass)} / class</div>
+                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-[rgba(28,27,24,0.08)] shadow-inner">
                   <div
-                    className="h-full rounded-full"
+                    className="h-full rounded-full transition-[width] duration-500 group-hover:[filter:brightness(1.06)]"
                     style={{ width: `${pct}%`, background: color.fg }}
                   />
                 </div>
-                <div className="mt-2 font-mono-nums text-xs text-[var(--muted)]">
-                  {unpaid}/10 unpaid · {total} classes logged
-                </div>
+                <div className="mt-2 font-mono-nums text-xs text-[var(--muted)]">{unpaid}/10 unpaid · {total} classes logged</div>
               </Link>
             );
           })}
