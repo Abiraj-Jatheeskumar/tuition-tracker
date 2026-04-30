@@ -167,7 +167,11 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login />;
+    return (
+      <div className="tt-mesh h-full min-h-0 w-full overflow-x-hidden overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+        <Login />
+      </div>
+    );
   }
 
   return (

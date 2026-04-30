@@ -38,6 +38,22 @@ function GoogleGlyph() {
   );
 }
 
+function FeatureRow({ f }) {
+  return (
+    <li className="flex gap-3 rounded-xl border border-[rgba(28,27,24,0.07)] bg-[rgba(255,255,255,0.82)] px-3.5 py-3 shadow-[0_8px_24px_-18px_rgba(13,74,53,0.14)] backdrop-blur-sm sm:gap-4 sm:px-4 sm:py-3.5 lg:rounded-2xl lg:p-4 lg:transition-[transform,box-shadow] lg:duration-200 lg:hover:-translate-y-0.5 lg:hover:shadow-[0_14px_32px_-20px_rgba(13,74,53,0.18)]">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[rgba(13,74,53,0.12)] bg-[rgba(232,248,239,0.65)] text-[var(--accent)] shadow-sm sm:h-11 sm:w-11 lg:h-12 lg:w-12">
+        <svg className="h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" aria-hidden>
+          {f.icon}
+        </svg>
+      </span>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="font-display text-[0.8125rem] font-bold leading-snug text-[var(--text)] sm:text-sm">{f.title}</p>
+        <p className="mt-1 text-[0.6875rem] leading-snug text-[var(--muted)] sm:text-xs">{f.copy}</p>
+      </div>
+    </li>
+  );
+}
+
 export default function Login() {
   const [busy, setBusy] = useState(false);
   const { showAlert } = useDialog();
@@ -58,125 +74,91 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-auto bg-[#0f1f1a] pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] ps-[max(1rem,env(safe-area-inset-left))] pe-[max(1rem,env(safe-area-inset-right))]">
-      {/* Deep atmosphere */}
+    <div className="relative w-full pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] ps-[max(1rem,env(safe-area-inset-left))] pe-[max(1rem,env(safe-area-inset-right))]">
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(22,129,93,0.35),transparent_55%),radial-gradient(ellipse_90%_70%_at_100%_50%,rgba(91,97,232,0.18),transparent_50%),linear-gradient(180deg,#0f1f1a_0%,#152a22_38%,#141c1a_100%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(168deg,var(--bg)_0%,#ebe6dc_52%,var(--bg-deep)_100%)]"
       />
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 opacity-[0.4]"
+        className="pointer-events-none absolute inset-0 opacity-[0.55]"
         style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.04) 1px,transparent 1px)",
-          backgroundSize: "32px 32px",
+          backgroundImage: "radial-gradient(rgba(12,65,47,0.07) 1px,transparent 1px)",
+          backgroundSize: "26px 26px",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-40 top-[5%] tt-login-orb-drift h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(22,129,93,0.45)_0%,transparent_65%)] blur-3xl md:-left-28"
+        className="pointer-events-none absolute -left-32 top-[6%] tt-login-orb-drift h-[min(72vw,20rem)] w-[min(72vw,20rem)] max-w-none rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.22)_0%,transparent_68%)] blur-3xl sm:h-80 sm:w-80 lg:left-[-5rem]"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-44 bottom-[0%] tt-login-orb-drift h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle,rgba(91,97,232,0.35)_0%,transparent_62%)] blur-[100px] md:-right-36"
-        style={{ animationDelay: "-7s" }}
+        className="pointer-events-none absolute -right-36 bottom-[0%] tt-login-orb-drift h-[min(85vw,22rem)] w-[min(85vw,22rem)] rounded-full bg-[radial-gradient(circle,rgba(22,129,93,0.18)_0%,transparent_65%)] blur-3xl sm:h-96 sm:w-96 lg:right-[-5rem]"
+        style={{ animationDelay: "-9s" }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute left-[12%] top-[55%] h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(8,145,178,0.12)_0%,transparent_68%)] blur-2xl opacity-80"
+        className="pointer-events-none absolute left-1/2 top-[38%] h-52 w-52 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(8,145,178,0.1)_0%,transparent_70%)] blur-2xl sm:h-72 sm:w-72"
       />
 
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-1 flex-col items-center justify-center gap-10 py-10 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:py-12">
-        {/* Desktop story column */}
-        <section className="hidden w-full max-w-[26rem] shrink-0 flex-col justify-center text-left text-white/95 xl:max-w-xl lg:flex">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 backdrop-blur-md">
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--accent-bright)] shadow-[0_0_12px_rgba(22,129,93,0.85)]" />
-            <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-[#9ed4be]">
-              Private tutoring workspace
-            </span>
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-6 py-5 sm:max-w-xl sm:gap-8 sm:py-8 lg:max-w-6xl lg:flex-row lg:items-start lg:justify-between lg:gap-x-12 lg:gap-y-8 lg:py-10 xl:gap-x-16">
+        <section className="hidden max-w-xl shrink-0 flex-col text-left lg:flex lg:max-w-[26rem] xl:max-w-md">
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-[rgba(13,74,53,0.14)] bg-[rgba(255,255,255,0.82)] px-3 py-1.5 shadow-sm backdrop-blur-sm">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent-bright)] shadow-[0_0_10px_rgba(22,129,93,0.45)]" />
+            <span className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent)]">Private tutoring workspace</span>
           </div>
-          <h1 className="mt-8 font-display text-[clamp(1.875rem,3.2vw+1rem,2.75rem)] font-extrabold leading-[1.08] tracking-tight">
-            Run your practice
-            <br />
-            <span className="bg-gradient-to-r from-[#86efac] via-[#4ade80] to-[#a5b4fc] bg-clip-text text-transparent">from one calm hub.</span>
+          <h1 className="mt-6 font-display text-[clamp(1.75rem,2.8vw+0.95rem,2.625rem)] font-extrabold leading-[1.1] tracking-tight text-[var(--text)]">
+            Run your practice from{" "}
+            <span className="bg-gradient-to-r from-[var(--accent-bright)] via-[var(--accent)] to-[var(--violet)] bg-clip-text text-transparent">one calm hub.</span>
           </h1>
-          <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-white/[0.72]">
+          <p className="mt-5 max-w-md text-[0.9375rem] leading-relaxed text-[var(--muted)]">
             Log sessions, bundle payments, and weekly timetables — built for tutors who want clarity without spreadsheets.
           </p>
-          <ul className="mt-12 flex flex-col gap-4">
+          <ul className="mt-10 flex flex-col gap-3">
             {features.map((f) => (
-              <li
-                key={f.title}
-                className="flex gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.05] p-4 backdrop-blur-sm transition-[transform,background] duration-300 hover:border-white/[0.12] hover:bg-white/[0.08]"
-              >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[rgba(22,129,93,0.2)] text-[#b6f0d2] shadow-inner">
-                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" aria-hidden>
-                    {f.icon}
-                  </svg>
-                </span>
-                <div>
-                  <p className="font-display text-[0.9375rem] font-bold text-white">{f.title}</p>
-                  <p className="mt-1 text-sm leading-snug text-white/[0.65]">{f.copy}</p>
-                </div>
-              </li>
+              <FeatureRow key={f.title} f={f} />
             ))}
           </ul>
         </section>
 
-        {/* Mobile + auth column */}
-        <div className="flex w-full max-w-[26rem] flex-col items-center lg:max-w-md">
-          {/* Mobile branding */}
-          <div className="mb-8 w-full lg:hidden">
-            <div className="flex flex-col items-center gap-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent-bright)] via-[#1b6b50] to-[#4338ca] font-display text-lg font-bold text-white shadow-[0_20px_40px_-12px_rgba(22,129,93,0.55)] ring-2 ring-white/25">
-                  TT
-                </div>
-                <div className="text-left">
-                  <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-[#86efac]/90 min-[380px]:text-[11px]">Tuition Tracker</p>
-                  <p className="font-display text-lg font-extrabold tracking-tight text-white min-[380px]:text-xl">
-                    Sign in to continue
-                  </p>
-                </div>
-              </div>
-              <p className="max-w-xs text-center text-sm leading-relaxed text-white/[0.65]">
-                Your students, bundles, and schedule — synced with your Google account.
-              </p>
-              <div className="-mx-1 flex w-full gap-2 overflow-x-auto overflow-y-hidden pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {features.map((f) => (
-                  <div
-                    key={f.title}
-                    className="shrink-0 snap-center rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-sm"
-                  >
-                    <p className="font-display text-xs font-bold text-[#cffafe]">{f.title}</p>
-                    <p className="mt-1 max-w-[10.5rem] text-[11px] leading-snug text-white/[0.6]">{f.copy}</p>
-                  </div>
-                ))}
-              </div>
+        <div className="flex w-full flex-1 flex-col lg:w-auto lg:max-w-[min(100%,26rem)] lg:flex-none xl:max-w-[28rem]">
+          <header className="mb-5 flex flex-col items-center text-center lg:hidden">
+            <div className="flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent-bright)] via-[#1b6b50] to-[#4338ca] font-display text-[0.95rem] font-bold text-white shadow-[0_14px_32px_-10px_rgba(13,74,53,0.45)] ring-2 ring-white/70 sm:h-14 sm:w-14 sm:text-base">
+              TT
             </div>
-          </div>
+            <p className="mt-3 font-display text-xs font-bold uppercase tracking-[0.18em] text-[var(--accent-bright)] sm:tracking-[0.2em]">Tuition Tracker</p>
+            <h1 className="mt-2 font-display text-[1.375rem] font-extrabold leading-tight tracking-tight text-[var(--text)] sm:text-2xl">Sign in to continue</h1>
+            <p className="mx-auto mt-2 max-w-[20rem] text-sm leading-relaxed text-[var(--muted)]">
+              Students, bundles, and schedule stay in sync with your Google account.
+            </p>
+          </header>
 
-          <div className="tt-login-card-animate tt-login-card-frame relative w-full" style={{ animationDelay: "0.05s" }}>
-            <div className="tt-login-card-inner relative overflow-hidden px-7 py-10 sm:px-9 sm:py-11">
+          <ul className="mb-5 grid grid-cols-1 gap-2 sm:gap-2.5 lg:hidden">
+            {features.map((f) => (
+              <FeatureRow key={f.title} f={f} />
+            ))}
+          </ul>
+
+          <div className="tt-login-card-animate tt-login-card-frame w-full lg:mx-0 lg:shadow-none" style={{ animationDelay: "0.04s" }}>
+            <div className="tt-login-card-inner relative overflow-hidden px-5 py-7 sm:px-7 sm:py-9">
               <div
                 aria-hidden
-                className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(22,129,93,0.12)_0%,transparent_70%)]"
+                className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(22,129,93,0.1)_0%,transparent_72%)] sm:h-48 sm:w-48"
               />
               <div
                 aria-hidden
-                className="pointer-events-none absolute -bottom-24 -left-12 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(91,97,232,0.1)_0%,transparent_70%)]"
+                className="pointer-events-none absolute -bottom-20 -left-8 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(91,97,232,0.08)_0%,transparent_70%)] sm:-left-10"
               />
 
               <div className="relative">
-                <div className="mx-auto flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent-bright)] via-[#1b6b50] to-[#4338ca] shadow-[0_20px_44px_-16px_rgba(13,74,53,0.55)] ring-2 ring-white/70">
-                  <svg className="h-10 w-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.55" aria-hidden>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent-bright)] via-[#1b6b50] to-[#4338ca] shadow-[0_14px_28px_-8px_rgba(13,74,53,0.4)] ring-2 ring-white/65 sm:h-[4rem] sm:w-[4rem]">
+                  <svg className="h-7 w-7 text-white sm:h-8 sm:w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.55" aria-hidden>
                     <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
                     <circle cx="12" cy="12" r="10" opacity="0.35" />
                   </svg>
                 </div>
-                <h2 className="mt-7 text-center font-display text-2xl font-bold tracking-tight text-[var(--text)] min-[380px]:text-[1.75rem]">Welcome back</h2>
-                <p className="mx-auto mt-3 max-w-[19rem] text-center text-sm leading-relaxed text-[var(--muted)]">
+                <h2 className="mt-5 text-center font-display text-xl font-bold tracking-tight text-[var(--text)] sm:mt-6 sm:text-[1.65rem]">Welcome back</h2>
+                <p className="mx-auto mt-2.5 max-w-[19rem] text-center text-[0.8125rem] leading-relaxed text-[var(--muted)] sm:mt-3 sm:text-sm">
                   One tap with Google. Your data stays under{" "}
                   <span className="font-semibold text-[var(--accent)]">your Firebase account only.</span>
                 </p>
@@ -185,33 +167,33 @@ export default function Login() {
                   type="button"
                   onClick={handleSignIn}
                   disabled={busy}
-                  className="tt-login-google-btn relative z-[1] mt-10 flex min-h-[3.25rem] w-full items-center justify-center gap-3 px-4 text-[0.9375rem] font-semibold text-[#1c1917] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-bright)] focus-visible:ring-offset-2"
+                  className="tt-login-google-btn relative z-[1] mt-7 flex min-h-[3rem] w-full touch-manipulation items-center justify-center gap-3 px-4 text-[0.9375rem] font-semibold text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-bright)] focus-visible:ring-offset-2 sm:mt-8 sm:min-h-[3.25rem]"
                 >
                   <GoogleGlyph />
                   {busy ? "Opening Google…" : "Continue with Google"}
                 </button>
-                <p className="relative z-[1] mt-3 text-center text-xs leading-snug text-[var(--muted)] md:text-[11px]">
+                <p className="relative z-[1] mt-2.5 text-center text-xs leading-snug text-[var(--muted)] md:text-[11px]">
                   A small sign-in window may open — allow pop-ups if your browser blocks it.
                 </p>
 
-                <details className="group relative z-[1] mt-6 rounded-xl border border-[rgba(13,74,53,0.14)] bg-[rgba(232,242,235,0.35)] text-left">
-                  <summary className="cursor-pointer list-none px-3.5 py-3 font-display text-xs font-semibold text-[var(--accent)] marker:content-none [&::-webkit-details-marker]:hidden">
-                    <span className="flex items-center justify-between gap-2">
+                <details className="group relative z-[1] mt-5 rounded-xl border border-[rgba(13,74,53,0.12)] bg-[rgba(232,242,235,0.45)] text-left">
+                  <summary className="cursor-pointer list-none px-3.5 py-3 font-display text-xs font-semibold text-[var(--accent)] marker:content-none [&::-webkit-details-marker]:hidden sm:py-3.5">
+                    <span className="flex min-h-[44px] items-center justify-between gap-2 py-0.5 [-webkit-tap-highlight-color:transparent] sm:min-h-0">
                       Trouble signing in?
-                      <svg className="h-4 w-4 shrink-0 text-[var(--muted)] opacity-80 transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                      <svg className="h-4 w-4 shrink-0 text-[var(--muted)] transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                         <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
                   </summary>
-                  <div className="border-t border-[rgba(13,74,53,0.1)] px-3.5 pb-3 pt-2 text-xs leading-snug text-[var(--muted)] md:text-[11px]">
+                  <div className="border-t border-[rgba(13,74,53,0.09)] px-3.5 pb-3.5 pt-2 text-xs leading-relaxed text-[var(--muted)] md:text-[11px]">
                     If you see <span className="font-medium text-[var(--text)]">disallowed_useragent</span>, open this site in{" "}
                     <span className="font-medium text-[var(--text)]">Chrome or Safari</span> — not Instagram, Messenger, or in-app browsers. From a link, use &ldquo;Open in browser&rdquo;.
                   </div>
                 </details>
 
-                <p className="relative z-[1] mt-8 border-t border-[rgba(13,74,53,0.09)] pt-6 text-center text-[11px] leading-relaxed text-[var(--muted)] md:text-xs">
-                  <span className="inline-flex items-center justify-center gap-1.5">
-                    <svg className="h-3.5 w-3.5 text-[var(--accent-bright)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <p className="relative z-[1] mt-5 border-t border-[rgba(13,74,53,0.08)] pt-4 text-center text-[11px] leading-relaxed text-[var(--muted)] sm:mt-6 sm:pt-5 sm:text-xs">
+                  <span className="inline-flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 px-1">
+                    <svg className="h-3.5 w-3.5 shrink-0 text-[var(--accent-bright)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     Secured with Firebase Auth · workspace data under your user ID in Firestore
