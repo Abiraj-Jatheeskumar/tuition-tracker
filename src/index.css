@@ -146,7 +146,7 @@ input[type="button"] {
 
 .tt-heading {
   font-family: var(--font-display);
-  font-size: clamp(1.4rem, 5vw + 0.55rem, 1.6875rem);
+  font-size: clamp(1.5rem, 4.2vw + 0.95rem, 1.6875rem);
   font-weight: 800;
   letter-spacing: -0.038em;
   line-height: 1.18;
@@ -169,6 +169,13 @@ input[type="button"] {
   line-height: 1.55;
 }
 
+@media (max-width: 767px) {
+  .tt-sub {
+    font-size: 1rem;
+    line-height: 1.62;
+  }
+}
+
 .tt-section-title {
   font-family: var(--font-display);
   font-size: 0.8125rem;
@@ -176,6 +183,13 @@ input[type="button"] {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+@media (max-width: 767px) {
+  .tt-section-title {
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+  }
 }
 
 /* Glass cards */
@@ -308,6 +322,20 @@ input[type="button"] {
   background: rgba(255, 255, 255, 0.95);
 }
 
+@media (max-width: 767px) {
+  .tt-mobile-header .tt-btn-ghost {
+    font-size: 0.875rem;
+    min-height: 2.75rem;
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  /* Primary actions stay legible without crowding thumb nav */
+  .tt-btn-accent {
+    font-size: 0.9375rem;
+  }
+}
+
 .tt-btn-dark {
   min-height: 2.75rem;
   border-radius: 0.75rem;
@@ -407,7 +435,6 @@ select.month-filter {
 
 .tt-page-hero {
   position: relative;
-  margin-bottom: 2rem;
   padding: clamp(1.25rem, 3.5vw, 1.75rem) clamp(1rem, 3vw, 1.625rem);
   border-radius: 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -431,32 +458,6 @@ select.month-filter {
 
 .tt-page-hero .tt-page-hero-eyebrow + .tt-heading {
   margin-top: 0.35rem;
-}
-
-.tt-sidebar-signout {
-  display: flex;
-  width: 100%;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.8125rem;
-  border: 1px solid rgba(28, 27, 24, 0.1);
-  background: rgba(255, 255, 255, 0.45);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  transition:
-    border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
-}
-
-.tt-sidebar-signout:hover {
-  border-color: rgba(180, 35, 24, 0.28);
-  color: var(--red);
-  background: var(--red-light);
 }
 
 .scrollbar-thin {

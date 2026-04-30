@@ -20,15 +20,19 @@ import StudentWeeklySchedule from "./StudentWeeklySchedule";
 import StudentEditorModal from "./StudentEditorModal";
 import {
   AVATAR_COLORS,
+  classBillableUnits,
+  classPaymentStatusById,
   classesChronologicalForStudent,
   formatRs,
   initials,
   nextPaymentClassCount,
-  paidClassIdSet,
+  SESSION_BILLING_OPTIONS,
   studentAvatarIndex,
+  studentPaymentBundleSize,
   subjectBadgeClasses,
   SUBJECT_LABELS,
   todayYYYYMMDD,
+  totalBillableUnitsForStudent,
   totalEarnedFromStudent,
   totalPaidClassCount,
   unpaidClasses,
@@ -46,6 +50,7 @@ export default function StudentDetail() {
   const { payments, loading: lp } = usePayments();
   const [date, setDate] = useState(todayYYYYMMDD());
   const [note, setNote] = useState("");
+  const [billingUnits, setBillingUnits] = useState("1");
   const [saving, setSaving] = useState(false);
   const [undoPayment, setUndoPayment] = useState(null);
   const dismissUndo = useCallback(() => setUndoPayment(null), []);
@@ -75,26 +80,31 @@ export default function StudentDetail() {
     return m;
   }, [chrono]);
 
-  const paidSet = useMemo(
-    () => paidClassIdSet(studentId, classes, payments),
-    [studentId, classes, payments],
+  const rowPaymentStatus = useMemo(
+    () => (student ? classPaymentStatusById(student.id, classes, payments) : new Map()),
+    [student, studentId, classes, payments],
   );
 
+  const bundleSize = student ? studentPaymentBundleSize(student) : 10;
   const unpaid = student ? unpaidClasses(student.id, classes, payments) : 0;
-  const bundlePos = unpaidInCurrentBundle(unpaid);
+  const bundlePos = unpaidInCurrentBundle(unpaid, bundleSize);
   const payNextCount =
     student && unpaid > 0
-      ? nextPaymentClassCount(student.id, classes, payments)
+      ? nextPaymentClassCount(student.id, classes, payments, bundleSize)
       : 0;
   const collectAmountRs =
     student && payNextCount > 0 ? formatRs(payNextCount * student.pricePerClass) : formatRs(0);
   const totalLogged = studentClasses.length;
+  const unitsLogged = student ? totalBillableUnitsForStudent(student.id, classes) : 0;
   const paidCount = student ? totalPaidClassCount(student.id, payments) : 0;
   const earned = student ? totalEarnedFromStudent(student.id, payments) : 0;
   const color = student
     ? AVATAR_COLORS[studentAvatarIndex(student, students) % AVATAR_COLORS.length]
     : AVATAR_COLORS[0];
-  const pct = Math.min(100, (bundlePos / 10) * 100);
+  const pct = bundleSize > 0 ? Math.min(100, (bundlePos / bundleSize) * 100) : 0;
+  const segmentCount = Math.min(bundleSize, 16);
+  const filledSegments =
+    bundleSize > 0 ? Math.min(segmentCount, Math.round((bundlePos / bundleSize) * segmentCount)) : 0;
 
   async function handleLogClass(e) {
     e.preventDefault();
@@ -102,6 +112,8 @@ export default function StudentDetail() {
     setSaving(true);
     const uid = user.uid;
     const beforeUnpaid = unpaidClasses(student.id, classes, payments);
+    const bs = studentPaymentBundleSize(student);
+    const units = classBillableUnits({ billingUnits: Number(billingUnits) });
     try {
       await addDoc(collection(db, "users", uid, "classes"), {
         studentId: student.id,
@@ -109,16 +121,18 @@ export default function StudentDetail() {
         subject: student.subject,
         date,
         note: note.trim() || "",
+        billingUnits: units,
         loggedAt: serverTimestamp(),
       });
-      const afterUnpaid = beforeUnpaid + 1;
+      const afterUnpaid = beforeUnpaid + units;
       setNote("");
       setDate(todayYYYYMMDD());
-      const afterBundle = unpaidInCurrentBundle(afterUnpaid);
-      if (beforeUnpaid < 10 && afterUnpaid >= 10) {
-        showToast("🎉 10 classes done! Time to collect.");
+      setBillingUnits("1");
+      const afterBundle = unpaidInCurrentBundle(afterUnpaid, bs);
+      if (beforeUnpaid < bs && afterUnpaid >= bs) {
+        showToast(`🎉 ${bs} unpaid units in this block — time to collect.`);
       } else {
-        showToast(`Class logged — ${afterBundle}/10 this bundle (${afterUnpaid} unpaid total)`);
+        showToast(`Logged — ${afterBundle}/${bs} toward next payment (${afterUnpaid} unpaid units total)`);
       }
     } catch (err) {
       console.error(err);
@@ -173,6 +187,7 @@ export default function StudentDetail() {
           subject: student.subject || "chem",
           pricePerClass: student.pricePerClass,
           phone: student.phone || "",
+          paymentBundleSize: student.paymentBundleSize,
         },
       );
       showToast("Profile updated.");
@@ -215,15 +230,16 @@ export default function StudentDetail() {
     if (!student || !user) return;
     const u = unpaidClasses(student.id, classes, payments);
     if (u <= 0) return;
-    const payCount = nextPaymentClassCount(student.id, classes, payments);
+    const bs = studentPaymentBundleSize(student);
+    const payCount = nextPaymentClassCount(student.id, classes, payments, bs);
     const totalAmount = payCount * student.pricePerClass;
     const extra =
       u > payCount
-        ? ` (${u} unpaid total — this collects the oldest ${payCount} only.)`
+        ? ` (${u} unpaid units total — this payment clears the oldest ${payCount} units only.)`
         : "";
     const confirmed = await showConfirm({
       title: "Record payment?",
-      message: `${formatRs(totalAmount)} for ${payCount} class(es).${extra} The rest stay unpaid toward the next bundle of 10.`,
+      message: `${formatRs(totalAmount)} for ${payCount} billing unit${payCount === 1 ? "" : "s"} at your current rate.${extra} The rest stay unpaid toward the next block (up to ${bs} units per collection).`,
       confirmLabel: "Record payment",
       cancelLabel: "Not yet",
     });
@@ -293,7 +309,7 @@ export default function StudentDetail() {
                   >
                     {SUBJECT_LABELS[student.subject] || student.subject}
                   </span>
-                  <span className="font-mono-nums text-sm font-medium text-[var(--muted)]">{formatRs(student.pricePerClass)} / class</span>
+                  <span className="font-mono-nums text-sm font-medium text-[var(--muted)]">{formatRs(student.pricePerClass)} / unit</span>
                   {student.phone ? <span className="font-mono-nums text-sm font-medium text-[var(--muted)]">{student.phone}</span> : null}
                 </div>
               </div>
@@ -320,22 +336,22 @@ export default function StudentDetail() {
             onSubmit={handleSaveProfile}
           />
 
-          {unpaid >= 10 ? (
+          {unpaid >= bundleSize ? (
             <div className="tt-banner mt-5 flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm font-semibold leading-snug text-[var(--accent)]">
                 <p>
-                  Collect next bundle:{" "}
-                  {payNextCount === 10
-                    ? `${collectAmountRs} (${payNextCount} classes)`
-                    : `${collectAmountRs} (${payNextCount} class${payNextCount === 1 ? "" : "es"})`}
+                  Collect next payment:{" "}
+                  {payNextCount === bundleSize
+                    ? `${collectAmountRs} (${payNextCount} units)`
+                    : `${collectAmountRs} (${payNextCount} unit${payNextCount === 1 ? "" : "s"})`}
                 </p>
                 {unpaid > payNextCount ? (
                   <p className="mt-1 font-mono-nums text-xs font-medium text-[var(--muted)]">
-                    {unpaid} unpaid total — oldest {payNextCount} first; remainder stays toward the next 10.
+                    {unpaid} unpaid units total — oldest {payNextCount} first; remainder stays toward the next block (up to {bundleSize} units).
                   </p>
                 ) : (
                   <p className="mt-1 font-mono-nums text-xs font-medium text-[var(--muted)]">
-                    Covers this 10-class block; class history stays on the timeline.
+                    Covers this {bundleSize}-unit block; session history stays on the timeline.
                   </p>
                 )}
               </div>
@@ -347,48 +363,72 @@ export default function StudentDetail() {
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="tt-stat">
-              <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Unpaid classes</div>
+              <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Unpaid units</div>
               <div className="relative z-[1] mt-1 font-mono-nums text-2xl font-bold tracking-tighter text-[var(--text)]">{unpaid}</div>
             </div>
             <div className="tt-stat">
-              <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total classes logged</div>
-              <div className="relative z-[1] mt-1 font-mono-nums text-2xl font-bold tracking-tighter text-[var(--text)]">{totalLogged}</div>
+              <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Sessions / units logged</div>
+              <div className="relative z-[1] mt-1 font-mono-nums text-2xl font-bold tracking-tighter text-[var(--text)]">
+                {totalLogged} <span className="text-base font-semibold text-[var(--muted)]">/ {unitsLogged}</span>
+              </div>
             </div>
             <div className="tt-stat">
-              <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Classes paid</div>
+              <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Units paid (payments)</div>
               <div className="relative z-[1] mt-1 font-mono-nums text-2xl font-bold tracking-tighter text-[var(--text)]">{paidCount}</div>
             </div>
             <div className="tt-stat">
-              <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total earned from this student</div>
+              <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Total earned from this student</div>
               <div className="relative z-[1] mt-1 font-mono-nums text-2xl font-bold tracking-tighter text-[var(--text)]">{formatRs(earned)}</div>
             </div>
           </div>
 
           <div className="tt-card mt-8 border px-5 py-5">
             <div className="font-display text-[0.9375rem] font-semibold text-[var(--text)]">
-              Progress ({bundlePos}/10 in current bundle · {unpaid} unpaid total)
+              Progress ({bundlePos}/{bundleSize} toward next collection · {unpaid} unpaid units)
             </div>
+            <p className="mt-1 text-xs leading-snug text-[var(--muted)] md:text-[11px]">
+              One unit = your standard rate ({formatRs(student.pricePerClass)}). Longer sessions can count as 2+ units when you log them.
+            </p>
             <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-[rgba(28,27,24,0.09)] shadow-inner">
               <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color.fg }} />
             </div>
-            <div className="mt-4 flex justify-between gap-1.5">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-3 flex-1 rounded-full shadow-inner transition ${i < bundlePos ? "bg-gradient-to-br from-[var(--accent-bright)] to-[var(--accent)]" : "bg-[rgba(28,27,24,0.07)]"}`}
-                />
-              ))}
-            </div>
+            {segmentCount > 0 ? (
+              <div className="mt-4 flex justify-between gap-1">
+                {Array.from({ length: segmentCount }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-3 min-w-0 flex-1 rounded-full shadow-inner transition ${i < filledSegments ? "bg-gradient-to-br from-[var(--accent-bright)] to-[var(--accent)]" : "bg-[rgba(28,27,24,0.07)]"}`}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <StudentWeeklySchedule student={student} />
 
           <form onSubmit={handleLogClass} className="tt-card mt-8 border px-5 py-5">
-            <h2 className="font-display text-[0.9375rem] font-semibold text-[var(--text)]">Log a Class</h2>
+            <h2 className="font-display text-[0.9375rem] font-semibold text-[var(--text)]">Log a class</h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)] md:text-[11px]">
+              Billable units set how much this session counts toward payment (e.g. 2 for a double-length lesson at the same hourly rate).
+            </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 Date
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="tt-input tt-date-touch font-mono-nums cursor-pointer py-3" />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Billable units
+                <select
+                  value={billingUnits}
+                  onChange={(e) => setBillingUnits(e.target.value)}
+                  className="tt-input mt-2 cursor-pointer font-mono-nums py-3"
+                >
+                  {SESSION_BILLING_OPTIONS.map((u) => (
+                    <option key={u} value={String(u)}>
+                      {u === 1 ? "1 (standard)" : `${u}× standard`}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)] sm:col-span-2">
                 Notes (optional)
@@ -408,7 +448,7 @@ export default function StudentDetail() {
 
           <h2 className="tt-section-title mt-10">Class history</h2>
           <p className="mt-2 max-w-2xl text-xs leading-relaxed text-[var(--muted)]">
-            Sessions stay here forever. Collecting payment only marks the oldest unpaid sessions as paid — it does not delete rows. Remove or edit a payment from{" "}
+            Sessions stay here forever. Collecting payment clears the oldest unpaid billable units first — it does not delete rows. Remove or edit a payment from{" "}
             <button
               type="button"
               onClick={() => navigate("/income")}
@@ -424,7 +464,10 @@ export default function StudentDetail() {
             <ul className="mt-4 flex flex-col gap-3">
               {studentClasses.map((c) => {
                 const num = classNumberById.get(c.id) || 0;
-                const paid = paidSet.has(c.id);
+                const u = classBillableUnits(c);
+                const st = rowPaymentStatus.get(c.id);
+                const paid = st?.state === "paid";
+                const partial = st?.state === "partial";
                 return (
                   <li
                     key={c.id}
@@ -432,9 +475,10 @@ export default function StudentDetail() {
                   >
                     <div className="flex min-w-0 flex-1 items-start gap-3">
                       <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-mono-nums text-sm font-bold shadow-sm ${paid ? "bg-[rgba(13,74,53,0.12)] text-[var(--accent)]" : "bg-[rgba(28,27,24,0.06)] text-[var(--muted)]"}`}
+                        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl font-mono-nums text-sm font-bold shadow-sm ${paid ? "bg-[rgba(13,74,53,0.12)] text-[var(--accent)]" : partial ? "bg-[rgba(180,130,20,0.12)] text-[#92400e]" : "bg-[rgba(28,27,24,0.06)] text-[var(--muted)]"}`}
                       >
-                        {num}
+                        <span>{num}</span>
+                        {u !== 1 ? <span className="text-[10px] font-semibold leading-none opacity-90 min-[400px]:text-[11px]">{u}u</span> : null}
                       </div>
                       <div className="min-w-0 flex-1 pt-0.5">
                         <div className="font-mono-nums text-sm font-medium text-[var(--text)]">{c.date}</div>
@@ -443,8 +487,16 @@ export default function StudentDetail() {
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-[rgba(28,27,24,0.06)] pt-3 sm:flex-nowrap sm:border-0 sm:pt-0">
                       {paid ? (
-                        <span className="rounded-full bg-[rgba(13,74,53,0.1)] px-2.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider text-[var(--accent)]">
+                        <span className="rounded-full bg-[rgba(13,74,53,0.1)] px-2.5 py-0.5 font-display text-[11px] font-bold uppercase tracking-wider text-[var(--accent)] sm:text-[10px]">
                           PAID
+                        </span>
+                      ) : null}
+                      {partial ? (
+                        <span
+                          className="max-w-[11rem] rounded-full bg-[rgba(245,158,11,0.15)] px-2.5 py-0.5 text-center font-display text-[11px] font-bold uppercase tracking-wider text-[#92400e] sm:text-[10px]"
+                          title={`${st.unitsCovered} of ${st.unitsTotal} units covered by payments so far`}
+                        >
+                          Partial ({st.unitsCovered}/{st.unitsTotal}u)
                         </span>
                       ) : null}
                       <button

@@ -17,19 +17,20 @@ import {
   nextPaymentClassCount,
   sortStudentsByUnpaid,
   studentAvatarIndex,
+  studentPaymentBundleSize,
   subjectBadgeClasses,
   SUBJECT_LABELS,
   todayYYYYMMDD,
   totalClassesLogged,
+  totalIncomeAll,
   unpaidClasses,
   unpaidInCurrentBundle,
-  totalIncomeAll,
 } from "../utils/helpers";
 
 function StatCard({ label, value, mono }) {
   return (
     <div className="tt-stat">
-      <div className="text-xs font-medium text-[var(--muted)]">{label}</div>
+      <div className="text-sm font-medium text-[var(--muted)] md:text-xs">{label}</div>
       <div
         className={`relative z-[1] mt-1 text-2xl font-bold tracking-tighter text-[var(--text)] ${mono ? "font-mono-nums" : "font-display"}`}
       >
@@ -39,11 +40,11 @@ function StatCard({ label, value, mono }) {
   );
 }
 
-function CollectBanner({ student, unpaidTotal, bundlePayCount, bundleAmountRs, onCollect }) {
+function CollectBanner({ student, unpaidTotal, bundlePayCount, bundleAmountRs, bundleSize, onCollect }) {
   const subtitle =
     unpaidTotal > bundlePayCount
-      ? `${bundlePayCount}-class bundle (oldest first) · ${unpaidTotal} unpaid total → ${bundleAmountRs}`
-      : `10 classes ready · ${bundleAmountRs}`;
+      ? `${bundlePayCount} units (oldest first) · ${unpaidTotal} unpaid total → ${bundleAmountRs}`
+      : `${bundleSize} units ready in this block · ${bundleAmountRs}`;
   return (
     <div className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-[rgba(26,122,92,0.32)] bg-gradient-to-br from-[rgba(238,247,241,0.98)] via-white/95 to-[rgba(237,239,253,0.55)] px-4 py-3.5 shadow-[0_20px_48px_-32px_rgba(13,74,53,0.42)] ring-2 ring-[rgba(26,122,92,0.08)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div aria-hidden className="pointer-events-none absolute -right-4 -top-10 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(26,122,92,0.15)_0%,transparent_70%)] blur-xl" />
@@ -82,7 +83,7 @@ export default function Dashboard() {
 
   const sorted = sortStudentsByUnpaid(students, classes, payments);
   const readyStudents = sorted.filter(
-    (s) => unpaidClasses(s.id, classes, payments) >= 10,
+    (s) => unpaidClasses(s.id, classes, payments) >= studentPaymentBundleSize(s),
   );
   const totalIncome = totalIncomeAll(payments);
   const readyCount = readyStudents.length;
@@ -94,15 +95,16 @@ export default function Dashboard() {
     const uid = user.uid;
     const unpaid = unpaidClasses(student.id, classes, payments);
     if (unpaid <= 0) return;
-    const payCount = nextPaymentClassCount(student.id, classes, payments);
+    const bs = studentPaymentBundleSize(student);
+    const payCount = nextPaymentClassCount(student.id, classes, payments, bs);
     const totalAmount = payCount * student.pricePerClass;
     const extra =
       unpaid > payCount
-        ? ` (${unpaid} unpaid total — this payment covers the oldest ${payCount} toward this bundle.)`
+        ? ` (${unpaid} unpaid units — this payment clears the oldest ${payCount} units.)`
         : "";
     const confirmed = await showConfirm({
       title: "Record payment?",
-      message: `${formatRs(totalAmount)} for ${payCount} class(es)?${extra} Older sessions are marked paid first; the rest stay toward the next bundle.`,
+      message: `${formatRs(totalAmount)} for ${payCount} billing unit${payCount === 1 ? "" : "s"}?${extra} Oldest unpaid units are covered first; the rest count toward the next block (up to ${bs} units per tap).`,
       confirmLabel: "Record payment",
       cancelLabel: "Not yet",
     });
@@ -139,7 +141,7 @@ export default function Dashboard() {
       ) : (
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total Students" value={students.length} />
-          <StatCard label="Total Classes Logged" value={totalClassesLogged(classes)} mono />
+          <StatCard label="Sessions logged" value={totalClassesLogged(classes)} mono />
           <StatCard label="Total Income (Rs.)" value={totalIncome.toLocaleString()} mono />
           <StatCard label="Ready to Collect" value={readyCount} mono />
         </div>
@@ -149,7 +151,8 @@ export default function Dashboard() {
         <div className="mt-8 flex flex-col gap-3">
           {readyStudents.map((s) => {
             const uTotal = unpaidClasses(s.id, classes, payments);
-            const payCnt = nextPaymentClassCount(s.id, classes, payments);
+            const bs = studentPaymentBundleSize(s);
+            const payCnt = nextPaymentClassCount(s.id, classes, payments, bs);
             return (
             <CollectBanner
               key={s.id}
@@ -157,6 +160,7 @@ export default function Dashboard() {
               unpaidTotal={uTotal}
               bundlePayCount={payCnt}
               bundleAmountRs={formatRs(payCnt * s.pricePerClass)}
+              bundleSize={bs}
               onCollect={collect}
             />
             );
@@ -185,17 +189,18 @@ export default function Dashboard() {
         <div className="mt-4 flex flex-col gap-3">
           {sorted.map((s) => {
             const unpaid = unpaidClasses(s.id, classes, payments);
-            const bundlePos = unpaidInCurrentBundle(unpaid);
+            const bs = studentPaymentBundleSize(s);
+            const bundlePos = unpaidInCurrentBundle(unpaid, bs);
             const total = classes.filter((c) => c.studentId === s.id).length;
             const color =
               AVATAR_COLORS[studentAvatarIndex(s, students) % AVATAR_COLORS.length];
-            const pct = Math.min(100, (bundlePos / 10) * 100);
+            const pct = bs > 0 ? Math.min(100, (bundlePos / bs) * 100) : 0;
             return (
               <Link
                 key={s.id}
                 to={`/students/${s.id}`}
                 className={`tt-card tt-card-hover flex items-center gap-3 border p-4 ${
-                  unpaid >= 10
+                  unpaid >= bs
                     ? "border-[rgba(26,122,92,0.45)] shadow-[0_12px_40px_-16px_rgba(13,74,53,0.35)] ring-2 ring-[rgba(26,122,92,0.15)]"
                     : "border-white/65"
                 }`}
@@ -218,8 +223,8 @@ export default function Dashboard() {
                   <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-[rgba(28,27,24,0.08)] shadow-inner">
                     <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color.fg }} />
                   </div>
-                  <div className="mt-1 font-mono-nums text-[11px] text-[var(--muted)]">
-                    {bundlePos}/10 this bundle · {unpaid} unpaid total · {total} classes logged
+                  <div className="mt-1 font-mono-nums text-xs text-[var(--muted)] md:text-[11px]">
+                    {bundlePos}/{bs} this block · {unpaid} unpaid units · {total} sessions
                   </div>
                 </div>
               </Link>

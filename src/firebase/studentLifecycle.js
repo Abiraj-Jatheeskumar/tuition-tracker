@@ -8,6 +8,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { normalizePaymentBundleSize } from "../utils/helpers";
 
 export async function deleteSlotDocsUnderStudent(db, uid, studentId) {
   const sref = collection(db, "users", uid, "students", studentId, "slots");
@@ -36,6 +37,7 @@ export async function updateStudentProfile(db, uid, studentId, next, prev) {
     subject: next.subject,
     pricePerClass: Number(next.pricePerClass),
     phone: String(next.phone || "").trim(),
+    paymentBundleSize: normalizePaymentBundleSize(next.paymentBundleSize),
     updatedAt: serverTimestamp(),
   };
 

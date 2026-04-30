@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { SUBJECT_OPTIONS } from "../utils/helpers";
+import { DEFAULT_PAYMENT_BUNDLE_SIZE, SUBJECT_OPTIONS } from "../utils/helpers";
 
 export default function StudentEditorModal({ open, onClose, student, saving, onSubmit }) {
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("chem");
   const [price, setPrice] = useState("");
   const [phone, setPhone] = useState("");
+  const [paymentBundleSize, setPaymentBundleSize] = useState(String(DEFAULT_PAYMENT_BUNDLE_SIZE));
 
   useEffect(() => {
     if (!open || !student) return;
@@ -14,6 +15,9 @@ export default function StudentEditorModal({ open, onClose, student, saving, onS
     setSubject(student.subject || "chem");
     setPrice(student.pricePerClass != null ? String(student.pricePerClass) : "");
     setPhone(student.phone || "");
+    setPaymentBundleSize(
+      student.paymentBundleSize != null ? String(student.paymentBundleSize) : String(DEFAULT_PAYMENT_BUNDLE_SIZE),
+    );
   }, [open, student]);
 
   function handleBackdrop(e) {
@@ -28,6 +32,7 @@ export default function StudentEditorModal({ open, onClose, student, saving, onS
       subject,
       pricePerClass: price,
       phone: phone.trim(),
+      paymentBundleSize,
     });
   }
 
@@ -81,6 +86,22 @@ export default function StudentEditorModal({ open, onClose, student, saving, onS
               onChange={(e) => setPrice(e.target.value)}
               className="tt-input mt-2 font-mono-nums"
             />
+          </label>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Collect every (units) *
+            <input
+              required
+              type="number"
+              min="1"
+              max="50"
+              step="1"
+              value={paymentBundleSize}
+              onChange={(e) => setPaymentBundleSize(e.target.value)}
+              className="tt-input mt-2 font-mono-nums"
+            />
+            <span className="mt-1 block text-[11px] leading-snug text-[var(--muted)]">
+              One &ldquo;Got payment&rdquo; clears up to this many billable units (oldest first). Example: 5 if they pay every five sessions worth.
+            </span>
           </label>
           <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             Phone (optional)

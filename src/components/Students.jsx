@@ -14,8 +14,10 @@ import {
   slotDisplayTime,
   sortStudentsByUnpaid,
   studentAvatarIndex,
+  studentPaymentBundleSize,
   subjectBadgeClasses,
   SUBJECT_LABELS,
+  totalBillableUnitsForStudent,
   unpaidClasses,
   unpaidInCurrentBundle,
 } from "../utils/helpers";
@@ -35,7 +37,7 @@ function SlotsPreview({ slots }) {
 
   if (sorted.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-[rgba(28,27,24,0.08)] bg-[rgba(255,255,255,0.45)] px-3 py-2.5 text-center text-[11px] leading-snug text-[var(--muted)]">
+      <p className="rounded-xl border border-dashed border-[rgba(28,27,24,0.08)] bg-[rgba(255,255,255,0.45)] px-3 py-2.5 text-center text-xs leading-snug text-[var(--muted)]">
         No recurring slots yet — add a weekly timetable on the profile.
       </p>
     );
@@ -48,15 +50,15 @@ function SlotsPreview({ slots }) {
           key={slot.id}
           className="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(28,27,24,0.08)] bg-[rgba(255,255,255,0.95)] px-2.5 py-1.5 font-mono-nums shadow-[inset_3px_0_0_0_var(--accent-bright)] ring-1 ring-[rgba(28,27,24,0.05)]"
         >
-          <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">{dayShort(slot.day)}</span>
-          <span className="text-[12px] font-semibold tracking-tight text-[var(--text)]">{slotDisplayTime(slot)}</span>
+          <span className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)] sm:text-[10px]">{dayShort(slot.day)}</span>
+          <span className="text-sm font-semibold tracking-tight text-[var(--text)] sm:text-[12px]">{slotDisplayTime(slot)}</span>
           {slot.duration ? (
-            <span className="text-[10px] font-medium tabular-nums text-[var(--muted)]">{slot.duration}</span>
+            <span className="text-[11px] font-medium tabular-nums text-[var(--muted)] sm:text-[10px]">{slot.duration}</span>
           ) : null}
         </li>
       ))}
       {extra > 0 ? (
-        <li className="inline-flex items-center rounded-xl bg-[rgba(13,74,53,0.08)] px-2.5 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-[var(--accent)]">
+        <li className="inline-flex items-center rounded-xl bg-[rgba(13,74,53,0.08)] px-2.5 py-1.5 font-display text-[11px] font-bold uppercase tracking-wider text-[var(--accent)] sm:text-[10px]">
           +{extra} more
         </li>
       ) : null}
@@ -74,7 +76,7 @@ function StatCell({ label, value, muted }) {
       }`}
     >
       <div className="font-mono-nums text-[0.85rem] font-bold tracking-tight text-[var(--text)]">{value}</div>
-      <div className="mt-0.5 font-display text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{label}</div>
+      <div className="mt-0.5 font-display text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] sm:text-[10px] sm:tracking-[0.14em]">{label}</div>
     </div>
   );
 }
@@ -99,7 +101,7 @@ export default function Students() {
   }, [slotRows]);
 
   const sorted = sortStudentsByUnpaid(students, classes, payments);
-  const ready = sorted.filter((s) => unpaidClasses(s.id, classes, payments) >= 10);
+  const ready = sorted.filter((s) => unpaidClasses(s.id, classes, payments) >= studentPaymentBundleSize(s));
 
   return (
     <div className="tt-page">
@@ -113,7 +115,8 @@ export default function Students() {
         <div className="mt-8 flex flex-col gap-4">
           {ready.map((s) => {
             const unpaid = unpaidClasses(s.id, classes, payments);
-            const payCnt = nextPaymentClassCount(s.id, classes, payments);
+            const bs = studentPaymentBundleSize(s);
+            const payCnt = nextPaymentClassCount(s.id, classes, payments, bs);
             const color =
               AVATAR_COLORS[studentAvatarIndex(s, students) % AVATAR_COLORS.length];
             return (
@@ -124,10 +127,10 @@ export default function Students() {
                 <div aria-hidden className="pointer-events-none absolute -right-6 -top-8 h-32 w-32 rounded-full bg-[rgba(26,122,92,0.12)] blur-2xl" />
                 <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="font-display text-[0.6875rem] font-bold uppercase tracking-[0.16em] text-[var(--accent)]">Collect next bundle</p>
+                    <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent)] md:text-[0.6875rem] md:tracking-[0.16em]">Collect next bundle</p>
                     <p className="mt-2 font-display text-base font-semibold tracking-tight text-[var(--text)]">{s.name}</p>
                     <p className="mt-1 font-mono-nums text-sm text-[var(--muted)]">
-                      {payCnt} class{payCnt === 1 ? "" : "es"} × {formatRs(s.pricePerClass)} ={" "}
+                      {payCnt} unit{payCnt === 1 ? "" : "s"} × {formatRs(s.pricePerClass)} ={" "}
                       <span className="font-semibold text-[var(--accent)]">{formatRs(payCnt * s.pricePerClass)}</span>
                       {unpaid > payCnt ? ` · ${unpaid} unpaid total` : ""}
                     </p>
@@ -165,14 +168,16 @@ export default function Students() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((s) => {
             const unpaid = unpaidClasses(s.id, classes, payments);
-            const bundlePos = unpaidInCurrentBundle(unpaid);
-            const payNext = nextPaymentClassCount(s.id, classes, payments);
+            const bs = studentPaymentBundleSize(s);
+            const bundlePos = unpaidInCurrentBundle(unpaid, bs);
+            const payNext = nextPaymentClassCount(s.id, classes, payments, bs);
             const earnedHint = unpaid > 0 ? formatRs(unpaid * s.pricePerClass) : formatRs(0);
             const total = classes.filter((c) => c.studentId === s.id).length;
+            const unitsLogged = totalBillableUnitsForStudent(s.id, classes);
             const color = AVATAR_COLORS[studentAvatarIndex(s, students) % AVATAR_COLORS.length];
-            const pct = Math.min(100, (bundlePos / 10) * 100);
+            const pct = bs > 0 ? Math.min(100, (bundlePos / bs) * 100) : 0;
             const mySlots = slotsByStudent.get(s.id) ?? EMPTY_STUDENT_SLOTS;
-            const urgent = unpaid >= 10;
+            const urgent = unpaid >= bs;
 
             return (
               <Link
@@ -209,11 +214,11 @@ export default function Students() {
                           {s.name}
                         </h2>
                         {urgent ? (
-                          <span className="shrink-0 rounded-full bg-gradient-to-r from-[var(--accent-bright)] to-[var(--accent)] px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_4px_12px_-4px_var(--accent-glow)]">
+                          <span className="shrink-0 rounded-full bg-gradient-to-r from-[var(--accent-bright)] to-[var(--accent)] px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-[0.13em] text-white shadow-[0_4px_12px_-4px_var(--accent-glow)] sm:text-[10px] sm:tracking-[0.14em]">
                             Collect
                           </span>
                         ) : (
-                          <span className="shrink-0 rounded-full border border-[rgba(28,27,24,0.08)] bg-white/85 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          <span className="shrink-0 rounded-full border border-[rgba(28,27,24,0.08)] bg-white/85 px-2 py-1 font-display text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] sm:text-[10px]">
                             Active
                           </span>
                         )}
@@ -234,8 +239,8 @@ export default function Students() {
                   </div>
 
                   <div className="mt-5 grid grid-cols-3 gap-2">
-                    <StatCell label="This bundle" value={`${bundlePos}/10`} />
-                    <StatCell label="Classes logged" value={total} muted={total === 0} />
+                    <StatCell label="This block" value={`${bundlePos}/${bs}`} />
+                    <StatCell label="Sessions / units" value={`${total} / ${unitsLogged}`} muted={total === 0} />
                     <StatCell label="≈ unpaid (Rs)" value={earnedHint} muted={unpaid === 0} />
                   </div>
 
@@ -247,14 +252,14 @@ export default function Students() {
                           <path d="M8 3v4M16 3v4M4 11h16" strokeLinecap="round" />
                         </svg>
                       </span>
-                      <span className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Weekly timetable</span>
+                      <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)] sm:text-[10px] sm:tracking-[0.16em]">Weekly timetable</span>
                     </div>
                     <SlotsPreview slots={mySlots} />
                   </div>
 
                   <div className="mt-5 flex items-end gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] sm:text-[10px]">
                         <span>Bundle progress</span>
                         {unpaid > 0 ? (
                           <span className="font-mono-nums normal-case text-[var(--text)]">

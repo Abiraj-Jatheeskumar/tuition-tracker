@@ -99,7 +99,7 @@ function MobileTabs() {
               key={item.to}
               type="button"
               onClick={() => navigate(item.to)}
-              className={`flex min-h-[52px] min-w-[42px] flex-1 flex-col items-center justify-center rounded-xl pb-1 pt-0.5 text-[10px] font-semibold leading-tight tracking-wide transition-colors active:opacity-85 sm:text-[11px] ${
+              className={`flex min-h-[52px] min-w-[44px] flex-1 flex-col items-center justify-center rounded-xl pb-1 pt-0.5 text-[0.6875rem] font-semibold leading-snug tracking-wide transition-colors active:opacity-85 min-[380px]:text-xs sm:text-[0.8125rem] ${
                 on
                   ? "text-[var(--accent)] [&_svg]:drop-shadow-[0_1px_2px_rgba(13,74,53,0.25)]"
                   : "text-[var(--muted)]"
@@ -133,7 +133,7 @@ function AppShell({ user }) {
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--accent-bright)] via-[#1b6b50] to-[#4338ca] font-display text-[0.7rem] font-bold text-white shadow-[0_10px_24px_-12px_rgba(13,74,53,0.45)] ring-2 ring-white/50">
               TT
             </span>
-            <div className="font-display text-[1.0625rem] font-extrabold leading-tight tracking-tighter text-[var(--text)]">
+            <div className="font-display text-lg font-extrabold leading-tight tracking-tighter text-[var(--text)] min-[380px]:text-[1.0625rem]">
               Tuition
               <span className="bg-gradient-to-r from-[var(--accent-bright)] to-[var(--violet)] bg-clip-text text-transparent">Tracker</span>
             </div>

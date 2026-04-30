@@ -114,7 +114,7 @@ export default function StudentWeeklySchedule({ student }) {
       )}
 
       <form onSubmit={handleAddScheduled} className="mt-6 border-t border-[rgba(28,27,24,0.08)] pt-6">
-        <p className="mb-4 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Add lesson slot</p>
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-[var(--muted)] md:text-[11px]">Add lesson slot</p>
         <SlotRowInputs row={draft} onChange={setDraft} showRemove={false} />
         <button type="submit" disabled={saving} className="tt-btn-dark mt-4 min-h-[3rem] px-8">
           Add weekly slot

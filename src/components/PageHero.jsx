@@ -3,7 +3,7 @@
  */
 export default function PageHero({ eyebrow, title, subtitle, hint }) {
   return (
-    <div className="tt-page-hero relative mb-8 overflow-hidden">
+    <div className="tt-page-hero relative mb-6 overflow-hidden md:mb-8">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-24 -top-16 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(91,97,232,0.28)_0%,transparent_70%)] blur-2xl"
@@ -14,14 +14,14 @@ export default function PageHero({ eyebrow, title, subtitle, hint }) {
       />
       <div className="relative z-[1]">
         {eyebrow ? (
-          <p className="tt-page-hero-eyebrow font-display text-[0.6875rem] font-bold uppercase tracking-[0.18em] text-[var(--accent-bright)]">
+          <p className="tt-page-hero-eyebrow font-display text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-bright)] md:text-[0.6875rem] md:tracking-[0.18em]">
             {eyebrow}
           </p>
         ) : null}
         <h1 className="tt-heading mt-2">{title}</h1>
         {subtitle ? <p className="tt-sub">{subtitle}</p> : null}
         {hint ? (
-          <p className="mt-4 max-w-2xl text-[0.8125rem] leading-relaxed text-[var(--muted)]">{hint}</p>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--muted)] md:text-[0.8125rem]">{hint}</p>
         ) : null}
       </div>
       <div

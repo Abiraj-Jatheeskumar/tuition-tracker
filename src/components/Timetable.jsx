@@ -155,7 +155,7 @@ export default function Timetable() {
                 {s.studentId ? (
                   <Link
                     to={`/students/${s.studentId}`}
-                    className="rounded-full bg-[rgba(13,74,53,0.09)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] no-underline"
+                    className="rounded-full bg-[rgba(13,74,53,0.09)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[var(--accent)] no-underline sm:text-[10px]"
                   >
                     Student
                   </Link>

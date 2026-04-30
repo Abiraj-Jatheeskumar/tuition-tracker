@@ -76,28 +76,66 @@ export function tsValue(ts) {
   return 0;
 }
 
-/** Each "Got payment" records up to this many classes (oldest unpaid first). */
-export const PAYMENT_BUNDLE_SIZE = 10;
+/** Default cap per "Got payment" when student has no custom bundle size. */
+export const DEFAULT_PAYMENT_BUNDLE_SIZE = 10;
+/** @deprecated Use DEFAULT_PAYMENT_BUNDLE_SIZE or studentPaymentBundleSize(student). */
+export const PAYMENT_BUNDLE_SIZE = DEFAULT_PAYMENT_BUNDLE_SIZE;
 
+export const MIN_PAYMENT_BUNDLE_SIZE = 1;
+export const MAX_PAYMENT_BUNDLE_SIZE = 50;
+
+/** Billable units per logged session (1 = one rate at pricePerClass). Quarters allowed. */
+export const MIN_CLASS_BILLING_UNITS = 0.25;
+export const MAX_CLASS_BILLING_UNITS = 24;
+
+export const SESSION_BILLING_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4];
+
+export function normalizePaymentBundleSize(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return DEFAULT_PAYMENT_BUNDLE_SIZE;
+  return Math.min(MAX_PAYMENT_BUNDLE_SIZE, Math.max(MIN_PAYMENT_BUNDLE_SIZE, Math.floor(n)));
+}
+
+export function studentPaymentBundleSize(student) {
+  return normalizePaymentBundleSize(student?.paymentBundleSize);
+}
+
+/** Snap to quarter-hours; missing or invalid → 1. */
+export function classBillableUnits(classDoc) {
+  const raw = Number(classDoc?.billingUnits);
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  const q = Math.round(raw * 4) / 4;
+  return Math.min(MAX_CLASS_BILLING_UNITS, Math.max(MIN_CLASS_BILLING_UNITS, q));
+}
+
+export function totalBillableUnitsForStudent(studentId, classes) {
+  return classes
+    .filter((c) => c.studentId === studentId)
+    .reduce((sum, c) => sum + classBillableUnits(c), 0);
+}
+
+/** Unpaid billable units (FIFO vs payment.classCount totals). */
 export function unpaidClasses(studentId, classes, payments) {
-  const totalLogged = classes.filter((c) => c.studentId === studentId).length;
+  const logged = totalBillableUnitsForStudent(studentId, classes);
   const totalPaid = payments
     .filter((p) => p.studentId === studentId)
     .reduce((sum, p) => sum + (Number(p.classCount) || 0), 0);
-  return Math.max(0, totalLogged - totalPaid);
+  return Math.max(0, logged - totalPaid);
 }
 
-/** 1–10: position within the current bundle (e.g. 13 unpaid → 3 toward next Rs). */
-export function unpaidInCurrentBundle(totalUnpaid) {
+/** Position 1…bundleSize within the current payment block (e.g. 13 unpaid, size 10 → 3). */
+export function unpaidInCurrentBundle(totalUnpaid, bundleSize) {
+  const b = normalizePaymentBundleSize(bundleSize);
   if (totalUnpaid <= 0) return 0;
-  const r = totalUnpaid % PAYMENT_BUNDLE_SIZE;
-  return r === 0 ? PAYMENT_BUNDLE_SIZE : r;
+  const r = totalUnpaid % b;
+  return r === 0 ? b : r;
 }
 
-/** Classes covered by the next "Got payment" (one bundle at a time, oldest first). */
-export function nextPaymentClassCount(studentId, classes, payments) {
+/** Units covered by the next "Got payment" (oldest unpaid first, capped by bundle size). */
+export function nextPaymentClassCount(studentId, classes, payments, bundleSize) {
   const u = unpaidClasses(studentId, classes, payments);
-  return Math.min(u, PAYMENT_BUNDLE_SIZE);
+  const cap = normalizePaymentBundleSize(bundleSize);
+  return Math.min(u, cap);
 }
 
 export function totalPaidClassCount(studentId, payments) {
@@ -157,14 +195,40 @@ export function classesChronologicalForStudent(studentId, classes) {
     });
 }
 
+const EPS = 1e-6;
+
+/** FIFO: fully paid session ids (whole row covered by payment units). */
 export function paidClassIdSet(studentId, classes, payments) {
+  const st = classPaymentStatusById(studentId, classes, payments);
+  const set = new Set();
+  st.forEach((row, id) => {
+    if (row.state === "paid") set.add(id);
+  });
+  return set;
+}
+
+/**
+ * FIFO payment allocation over billable units (chronological).
+ * @returns {Map<string, { state: 'paid'|'partial'|'unpaid', unitsCovered: number, unitsTotal: number }>}
+ */
+export function classPaymentStatusById(studentId, classes, payments) {
   const paidTotal = totalPaidClassCount(studentId, payments);
   const ordered = classesChronologicalForStudent(studentId, classes);
-  const set = new Set();
-  for (let i = 0; i < ordered.length && i < paidTotal; i++) {
-    set.add(ordered[i].id);
+  const map = new Map();
+  let remaining = paidTotal;
+  for (const c of ordered) {
+    const u = classBillableUnits(c);
+    if (remaining + EPS >= u) {
+      map.set(c.id, { state: "paid", unitsCovered: u, unitsTotal: u });
+      remaining = Math.max(0, remaining - u);
+    } else if (remaining > EPS) {
+      map.set(c.id, { state: "partial", unitsCovered: remaining, unitsTotal: u });
+      remaining = 0;
+    } else {
+      map.set(c.id, { state: "unpaid", unitsCovered: 0, unitsTotal: u });
+    }
   }
-  return set;
+  return map;
 }
 
 export function totalEarnedFromStudent(studentId, payments) {

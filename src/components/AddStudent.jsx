@@ -7,10 +7,11 @@ import { useStudents } from "../hooks/useStudents";
 import { useToast } from "../context/ToastContext";
 import { useDialog } from "../context/DialogContext";
 import {
+  formatRs,
+  normalizePaymentBundleSize,
   subjectBadgeClasses,
   SUBJECT_LABELS,
   SUBJECT_OPTIONS,
-  formatRs,
 } from "../utils/helpers";
 import PageHero from "./PageHero";
 import StudentEditorModal from "./StudentEditorModal";
@@ -25,6 +26,7 @@ export default function AddStudent() {
   const [subject, setSubject] = useState("chem");
   const [price, setPrice] = useState("");
   const [phone, setPhone] = useState("");
+  const [paymentBundleSize, setPaymentBundleSize] = useState("10");
   const [saving, setSaving] = useState(false);
   const [scheduleLines, setScheduleLines] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -45,6 +47,7 @@ export default function AddStudent() {
       });
       return;
     }
+    const bundle = normalizePaymentBundleSize(paymentBundleSize);
     setSaving(true);
     try {
       const pref = await addDoc(collection(db, "users", user.uid, "students"), {
@@ -52,6 +55,7 @@ export default function AddStudent() {
         subject,
         pricePerClass: n,
         phone: phone.trim() || "",
+        paymentBundleSize: bundle,
         createdAt: serverTimestamp(),
       });
       const sid = pref.id;
@@ -70,6 +74,7 @@ export default function AddStudent() {
       setName("");
       setPrice("");
       setPhone("");
+      setPaymentBundleSize("10");
       setSubject("chem");
       setScheduleLines([]);
     } catch (err) {
@@ -93,18 +98,20 @@ export default function AddStudent() {
       });
       return;
     }
+    const bundle = normalizePaymentBundleSize(fields.paymentBundleSize);
     setSavingEdit(true);
     try {
       await updateStudentProfile(
         db,
         user.uid,
         editing.id,
-        { ...fields, pricePerClass: n },
+        { ...fields, pricePerClass: n, paymentBundleSize: bundle },
         {
           name: editing.name || "",
           subject: editing.subject || "chem",
           pricePerClass: editing.pricePerClass,
           phone: editing.phone || "",
+          paymentBundleSize: editing.paymentBundleSize,
         },
       );
       showToast("Student profile updated.");
@@ -175,6 +182,21 @@ export default function AddStudent() {
             onChange={(e) => setPrice(e.target.value)}
             className="tt-input mt-2 font-mono-nums"
           />
+        </label>
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Collect every (units)
+          <input
+            type="number"
+            min="1"
+            max="50"
+            step="1"
+            value={paymentBundleSize}
+            onChange={(e) => setPaymentBundleSize(e.target.value)}
+            className="tt-input mt-2 font-mono-nums"
+          />
+          <span className="mt-1 block text-[11px] leading-snug text-[var(--muted)]">
+            Each &ldquo;Got payment&rdquo; clears up to this many billable units (default 10). Set 5 if they settle every five units.
+          </span>
         </label>
         <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
           Phone (optional)

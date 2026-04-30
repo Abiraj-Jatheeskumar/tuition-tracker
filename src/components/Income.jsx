@@ -28,10 +28,12 @@ function PaymentEditorPortal({ payment, uid, onClose, onSaved, showAlert }) {
   const [busy, setBusy] = useState(false);
 
   const computed = useMemo(() => {
-    const cc = Number.parseInt(String(classCount), 10);
+    const ccRaw = Number.parseFloat(String(classCount).trim().replace(",", "."));
     const pp = Number(pricePerClass);
-    if (!Number.isFinite(cc) || !Number.isFinite(pp) || cc < 1 || pp <= 0) return null;
-    return cc * pp;
+    if (!Number.isFinite(ccRaw) || !Number.isFinite(pp) || ccRaw < 0.25 || pp <= 0) return null;
+    const cc = Math.round(ccRaw * 4) / 4;
+    if (cc < 0.25) return null;
+    return { total: cc * pp, units: cc };
   }, [classCount, pricePerClass]);
 
   async function handleSubmit(e) {
@@ -39,16 +41,16 @@ function PaymentEditorPortal({ payment, uid, onClose, onSaved, showAlert }) {
     if (computed === null) {
       await showAlert({
         title: "Check values",
-        message: "Use a positive class count and Rs. per class.",
+        message: "Use billing units (min 0.25, steps of 0.25) and a positive Rs. per unit.",
       });
       return;
     }
     setBusy(true);
     try {
       await updateDoc(doc(db, "users", uid, "payments", payment.id), {
-        classCount: Number.parseInt(String(classCount), 10),
+        classCount: computed.units,
         pricePerClass: Number(pricePerClass),
-        totalAmount: computed,
+        totalAmount: computed.total,
         date,
       });
       onSaved();
@@ -88,19 +90,20 @@ function PaymentEditorPortal({ payment, uid, onClose, onSaved, showAlert }) {
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="tt-input mt-1 font-mono-nums" />
           </label>
           <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Classes in this payment
+            Billing units in this payment
             <input
               type="number"
-              inputMode="numeric"
-              min="1"
-              step="1"
+              inputMode="decimal"
+              min="0.25"
+              step="0.25"
               value={classCount}
               onChange={(e) => setClassCount(e.target.value)}
               className="tt-input mt-1 font-mono-nums"
             />
+            <span className="mt-1 block text-[11px] text-[var(--muted)]">Must match how many oldest unpaid units this receipt clears.</span>
           </label>
           <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Rs. per class
+            Rs. per unit
             <input
               type="number"
               inputMode="decimal"
@@ -112,7 +115,7 @@ function PaymentEditorPortal({ payment, uid, onClose, onSaved, showAlert }) {
             />
           </label>
           <div className="rounded-xl border border-[rgba(26,122,92,0.2)] bg-[rgba(232,242,235,0.5)] px-3 py-2 text-sm text-[var(--accent)]">
-            Total:&nbsp;<span className="font-mono-nums font-semibold">{computed !== null ? formatRs(computed) : "—"}</span>
+            Total:&nbsp;<span className="font-mono-nums font-semibold">{computed !== null ? formatRs(computed.total) : "—"}</span>
           </div>
           <div className="flex flex-col gap-3 pt-2 sm:flex-row-reverse sm:justify-end">
             <button type="submit" disabled={busy} className="tt-btn-accent min-h-[3rem] w-full px-6 sm:w-auto">
@@ -178,7 +181,7 @@ export default function Income() {
         subtitle="Every payment captured from your tutoring — filter by month, edit details, or remove to recalc unpaid."
         hint={
           <>
-            Payments only change how sessions are counted (paid vs unpaid). They never delete class logs. Edit or delete here if you tapped &ldquo;Got payment&rdquo; by mistake.
+            Payments only change how billable units are counted (paid vs unpaid). They never delete session logs. Edit or delete here if you tapped &ldquo;Got payment&rdquo; by mistake.
           </>
         }
       />
@@ -192,15 +195,15 @@ export default function Income() {
       ) : (
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="tt-stat">
-            <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total payments collected</div>
+            <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Total payments collected</div>
             <div className="relative z-[1] mt-1 font-mono-nums text-3xl font-bold tracking-tighter text-[var(--text)]">{paymentCount}</div>
           </div>
           <div className="tt-stat">
-            <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total classes paid</div>
+            <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Total units paid</div>
             <div className="relative z-[1] mt-1 font-mono-nums text-3xl font-bold tracking-tighter text-[var(--text)]">{classesPaid}</div>
           </div>
           <div className="tt-stat">
-            <div className="relative z-[1] text-xs font-medium text-[var(--muted)]">Total income (Rs.)</div>
+            <div className="relative z-[1] text-sm font-medium text-[var(--muted)] md:text-xs">Total income (Rs.)</div>
             <div className="relative z-[1] mt-1 font-mono-nums text-3xl font-bold tracking-tighter text-[var(--text)]">
               {totalCollected.toLocaleString()}
             </div>
@@ -260,7 +263,7 @@ export default function Income() {
                         <span className="font-mono-nums text-xs font-medium text-[var(--muted)]">{p.date}</span>
                       </div>
                       <div className="mt-1 font-mono-nums text-xs font-medium text-[var(--muted)]">
-                        {p.classCount} classes × {formatRs(p.pricePerClass)}
+                        {p.classCount} units × {formatRs(p.pricePerClass)}
                       </div>
                     </div>
                   </div>
